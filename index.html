@@ -19,8 +19,6 @@
 </head>
 <body>
 </body>
-<script src="js/config.js"></script>
-
 <script id="fragment_shader_screen" type="x-shader/x-fragment">
 
       varying vec2 vUv;
@@ -33,12 +31,24 @@
         // https://github.com/chribbe/ThreeJS-GameboyStyleShader/blob/master/js/GameboyShader.js
         // MIT License
 
-        vec3 c64col[5];
-        c64col[0] = vec3(247.0, 225.0, 143.0); //yeelow
-        c64col[1] = vec3(227.0, 159.0, 86.0); // muted orange
-        c64col[2] = vec3(58.0, 130.0, 201.0); // blue
-        c64col[3] = vec3(140.0, 78.0, 58.0); // brugundy?
-        c64col[4] = vec3(39.0, 73.0, 89.0); //deep turq
+        vec3 c64col[4];
+        // cmyk
+        c64col[0] = vec3(255.0, 236.0, 141.0);
+        c64col[1] = vec3(50.0, 217.0, 206.0);
+        c64col[2] = vec3(244.0, 28.0, 125.0);
+        c64col[3] = vec3(63.0, 13.0, 104.0);
+
+        // grayscale
+        c64col[0] = vec3(235.0, 235.0, 235.0);
+        c64col[1] = vec3(164.0, 164.0, 164.0);
+        c64col[2] = vec3(92.0, 92.0, 92.0);
+        c64col[3] = vec3(20.0, 20.0, 20.0);
+
+        // dark ice
+        c64col[0] = vec3(220.0, 237.0, 235.0);
+        c64col[1] = vec3(144.0, 173.0, 187.0);
+        c64col[2] = vec3(86.0, 104.0, 157.0);
+        c64col[3] = vec3(38.0, 35.0, 56.0);
 
         vec3 samp = texture2D(tDiffuse, vUv.xy).rgb;
         vec3 match = vec3(0.0,0.0,0.0);
@@ -77,6 +87,8 @@
 
 <script src="js/three.js"></script>
 <script src="js/OBJLoader.js"></script>
+<script src="js/config.js"></script>
+<script src="js/controls.js"></script>
 <script src="js/mob.js"></script>
 <script src="js/scenes.js"></script>
 <script src="js/main.js"></script>

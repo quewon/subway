@@ -4,8 +4,9 @@ var _obj, _texture;
 var dummyScene, rtTexture;
 
 function init() {
-  camera = new THREE.PerspectiveCamera( 75, 1, 0.1, 1000 );
+  camera = new THREE.PerspectiveCamera( 90, 1, 0.1, 1000 );
   camera.position.z = 7;
+  camera.position.y = 3;
   renderer = new THREE.WebGLRenderer();
 
   renderer.setPixelRatio( window.devicePixelRatio );
@@ -61,48 +62,66 @@ function init() {
   _obj = new OBJLoader();
   _texture = new TextureLoader();
 
+  // controls
+  init_controls();
+
   //
 
   scene("main");
 
+  // fog
+  scene().fog = new THREE.FogExp2( Config.Black, 0.07 );
+
   add("mobs", new Mob({
     name: "ground",
-    pos: { x:0, y:-5, z:0 },
-    dimensions: { x:10, y:1, z:10 }
+    pos: new Vector3(0, -0.5, 0),
+    dimensions: { x:10, y:0.5, z:10 },
+    color: Config.LightGray,
   }));
 
-  add("lights", new THREE.AmbientLight( 0x404040, 3 ));
-  let light = new THREE.DirectionalLight( 0xffffff, 0.5 );
+  add("lights", new THREE.AmbientLight( Config.White, 1 ));
+  // let light = new THREE.DirectionalLight( Config.White, 0.5 );
+  let light = new THREE.SpotLight( Config.White );
   light.castShadow = true;
-  light.position.set( 1, 1, 1 );
-  // light.shadow.bias = 0.0001;
+  // light.position.set( 1, 1, 1 );
+  light.position.set( -1, 3, 1 );
+  light.shadow.bias = 0.0001;
   add("lights", light);
 
-  // fog
-  scene().fog = new THREE.FogExp2( 0x000000, 0.07 );
+  add("mobs", new Mob({
+    name: "lightbulb",
+    pos: new Vector3(-1, 3, 1),
+    color: Config.White,
+    dimensions: { x:0.1, y:0.1, z:0.1 }
+  }));
 
-  animate()
-  update();
-
-  // load("player", function(object) {
-  //   add("mobs", new Mob({
-  //     name: name,
-  //     mesh: object.children[0],
-  //     pos: { x:0, y:0, z:0 }
-  //   }));
-  // });
-
-  load("toast", function(object) {
+  load("player", function(object) {
     add("mobs", new Mob({
-      name: name,
+      name: "player",
       mesh: object.children[0],
-      pos: { x:0, y:-4, z:0 }
+      pos: new Vector3(0, 0, 0),
     }));
+
+    load("toast", function(object) {
+      add("mobs", new Mob({
+        name: "toast",
+        mesh: object.children[0],
+        pos: new Vector3(0, 0, 0),
+      }));
+
+      animate();
+      update();
+    });
   });
 }
 
 function animate() {
-  renderer.render(scene(), camera);
+  // camera follows player
+  let player = S[S.Current].mobs.player;
+  camera.position.x = player.pos.x;
+  camera.position.y = player.pos.y + player.height * 3/4; // position camera on top quarter of player
+  camera.position.z = player.pos.z;
+  // camera.rotation.y = player.mesh.rotation.y - Config.defaultRotation;
 
   //
   renderer.setRenderTarget( rtTexture );
@@ -119,9 +138,15 @@ function animate() {
 function update() {
   let s = S[S.Current];
 
-  for (let i in s.mobs) {
-    s.mobs[i].update();
+  //
+
+  for (let mob in s.mobs) {
+    s.mobs[mob].update();
   }
+
+  //
+
+  Controls.key.update();
 
   requestAnimationFrame(update);
 }
@@ -157,16 +182,18 @@ function scene(name) {
   return S[S.Current].scene;
 }
 
-function add(cat, value) {
-  S[S.Current][cat].push(value);
-
-  if (cat == "mobs") {
+function add(category, value) {
+  if (category == "mobs") {
+    S[S.Current][category][value.name] = value;
     scene().add(value.mesh);
   } else {
+    S[S.Current][category].push(value);
     scene().add(value);
   }
 }
 
 function randomColor() {
-  return (0x1000000+Math.random()*0xffffff);
+  let rand = Math.floor(Math.random() * 4);
+
+  return Config[Config.Colors[rand]];
 }
