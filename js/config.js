@@ -1,5 +1,6 @@
 var Config = {
   res: 2,
+  cursorSize: 0.1,
 
   Colors: ["Black", "DarkGray", "LightGray", "White"],
   Black: 0x000000,

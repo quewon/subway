@@ -1,7 +1,9 @@
 var Controls = {
   mouse: {
+    x: 0,
+    y: 0,
     euler: new THREE.Euler(0, 0, 0, 'YXZ'),
-    speed: Math.PI / 128 * 0.07,
+    speed: Math.PI / 16,
     clampDegree: Math.PI / 2,
   },
   key: {
@@ -19,10 +21,8 @@ function init_controls() {
   }, false );
 
   document.addEventListener("mousemove", function(e) {
-    const mx = e.movementX || e.mozMovementX || e.webkitMovementX || 0;
-    const my = e.movementY || e.mozMovementY || e.webkitMovementY || 0;
-
-    Mouse(mx, my);
+    Controls.mouse.x = e.movementX || e.mozMovementX || e.webkitMovementX || 0;
+    Controls.mouse.y = e.movementY || e.mozMovementY || e.webkitMovementY || 0;
   }, false);
 
   // key
@@ -52,15 +52,18 @@ function init_controls() {
   });
 }
 
-function Mouse(x, y) {
+Controls.mouse.update = function(delta) {
+  const x = Controls.mouse.x;
+  const y = Controls.mouse.y;
+
   let player = S[S.Current].mobs.player;
   let speed = Controls.mouse.speed;
 
-  let change = x * speed;
+  let change = x * speed * delta;
   player.turn(change);
 
   Controls.mouse.euler.y -= change;
-  Controls.mouse.euler.x -= y * speed;
+  Controls.mouse.euler.x -= y * speed * delta;
   Controls.mouse.euler.x = clamp(Controls.mouse.euler.x, -Controls.mouse.clampDegree, Controls.mouse.clampDegree);
   camera.quaternion.setFromEuler(Controls.mouse.euler);
 }
@@ -76,16 +79,20 @@ Controls.key.update = function() {
     if (handler[i]) {
       switch (i) {
         case map.forward:
-          player.move("Forward", 1);
+          if (history[0] == map.back) break;
+          player.move("Forward");
           break;
         case map.back:
-          player.move("Backward", 1);
+          if (history[0] == map.forward) break;
+          player.move("Backward");
           break;
         case map.right:
-          player.move("Right", 1);
+          if (history[0] == map.left) break;
+          player.move("Right");
           break;
         case map.left:
-          player.move("Left", 1);
+          if (history[0] == map.right) break;
+          player.move("Left");
           break;
       }
     }

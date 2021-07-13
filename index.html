@@ -2,11 +2,12 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title></title>
+  <title>ur stepping on my toast</title>
   <style type="text/css">
     body {
       margin: 0;
       overflow: hidden;
+      background-color: #141414;
     }
 
     canvas {
@@ -15,9 +16,29 @@
       top: 50%;
       transform: translate(-50%, -50%);
     }
+
+    #ui {
+      z-index: 10;
+    }
+
+    #reticle {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      z-index: inherit;
+
+      border: 1px solid #141414;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
   </style>
 </head>
 <body>
+  <div id="ui">
+    <div id="reticle"></div>
+  </div>
 </body>
 <script id="fragment_shader_screen" type="x-shader/x-fragment">
 
@@ -33,16 +54,16 @@
 
         vec3 c64col[4];
         // cmyk
-        c64col[0] = vec3(255.0, 236.0, 141.0);
-        c64col[1] = vec3(50.0, 217.0, 206.0);
-        c64col[2] = vec3(244.0, 28.0, 125.0);
-        c64col[3] = vec3(63.0, 13.0, 104.0);
+        //c64col[0] = vec3(255.0, 236.0, 141.0);
+        //c64col[1] = vec3(50.0, 217.0, 206.0);
+        //c64col[2] = vec3(244.0, 28.0, 125.0);
+        //c64col[3] = vec3(63.0, 13.0, 104.0);
 
         // grayscale
-        c64col[0] = vec3(235.0, 235.0, 235.0);
-        c64col[1] = vec3(164.0, 164.0, 164.0);
-        c64col[2] = vec3(92.0, 92.0, 92.0);
-        c64col[3] = vec3(20.0, 20.0, 20.0);
+        //c64col[0] = vec3(235.0, 235.0, 235.0);
+        //c64col[1] = vec3(164.0, 164.0, 164.0);
+        //c64col[2] = vec3(92.0, 92.0, 92.0);
+        //c64col[3] = vec3(20.0, 20.0, 20.0);
 
         // dark ice
         c64col[0] = vec3(220.0, 237.0, 235.0);

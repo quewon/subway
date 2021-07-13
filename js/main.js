@@ -1,10 +1,11 @@
 var camera, renderer;
 var _obj, _texture;
+var clock;
 
 var dummyScene, rtTexture;
 
 function init() {
-  camera = new THREE.PerspectiveCamera( 90, 1, 0.1, 1000 );
+  camera = new THREE.PerspectiveCamera( 100, 1, 0.1, 1000 );
   camera.position.z = 7;
   camera.position.y = 3;
   renderer = new THREE.WebGLRenderer();
@@ -85,7 +86,7 @@ function init() {
   light.castShadow = true;
   // light.position.set( 1, 1, 1 );
   light.position.set( -1, 3, 1 );
-  light.shadow.bias = 0.0001;
+  light.shadow.bias = -0.0005;
   add("lights", light);
 
   add("mobs", new Mob({
@@ -109,21 +110,47 @@ function init() {
         pos: new Vector3(0, 0, 0),
       }));
 
+      clock = new THREE.Clock();
       animate();
-      update();
     });
   });
 }
 
 function animate() {
-  // camera follows player
+  // camera
   let player = S[S.Current].mobs.player;
   camera.position.x = player.pos.x;
   camera.position.y = player.pos.y + player.height * 3/4; // position camera on top quarter of player
   camera.position.z = player.pos.z;
-  // camera.rotation.y = player.mesh.rotation.y - Config.defaultRotation;
 
   //
+
+  requestAnimationFrame(animate);
+  update();
+  render();
+}
+
+function update() {
+  var delta = clock.getDelta();
+
+  let s = S[S.Current];
+
+  //
+
+  Controls.mouse.update(delta);
+  Controls.key.update();
+
+  //
+
+  for (let mob in s.mobs) {
+    s.mobs[mob].update(delta);
+  }
+
+  Controls.mouse.x = 0;
+  Controls.mouse.y = 0;
+}
+
+function render() {
   renderer.setRenderTarget( rtTexture );
   renderer.clear();
   renderer.render( scene(), camera );
@@ -131,24 +158,6 @@ function animate() {
   renderer.setRenderTarget( null );
   renderer.clear();
   renderer.render( dummyScene, dummyCamera );
-
-  requestAnimationFrame(animate);
-}
-
-function update() {
-  let s = S[S.Current];
-
-  //
-
-  for (let mob in s.mobs) {
-    s.mobs[mob].update();
-  }
-
-  //
-
-  Controls.key.update();
-
-  requestAnimationFrame(update);
 }
 
 function load(name, func) {
