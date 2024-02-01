@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title>how to use the subway</title>
+    <link rel="icon" type="image/x-icon" href="assets/favicon.ico">
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+
+    <canvas></canvas>
+
+  </body>
+
+  <script type="text/javascript" src="js/util.js"></script>
+  <script type="text/javascript" src="js/audio.js"></script>
+
+  <script type="text/javascript" src="js/engine.js"></script>
+  <script type="text/javascript" src="js/subway.js"></script>
+
+  <script type="text/javascript" src="js/things/confiner.js"></script>
+
+  <script type="text/javascript" src="js/things/thing.js"></script>
+  <script type="text/javascript" src="js/things/passenger.js"></script>
+  <script type="text/javascript" src="js/things/scene.js"></script>
+  <script type="text/javascript">
+    BACKGROUND_COLOR = "white";
+
+    var player;
+    var subway;
+
+    load_sounds(init);
+
+    function init() {
+      window.onresize();
+      setInterval(update, 1);
+      animate();
+
+      //
+
+      subway = new Subway();
+
+      if (subway.lines.length < 2) {
+        console.log("subway generation fail");
+        init();
+        return;
+      }
+
+      for (let station of subway.stations) {
+        for (let i=0; i<2; i++) {
+          let groupsize = Math.ceil(Math.random() * 5);
+
+          if (groupsize == 1) {
+            new Passenger({ scene: station.scene });
+          } else {
+            let array = [];
+            for (let i=0; i<groupsize; i++) {
+              array.push(new Passenger({ scene: station.scene }));
+            }
+            new Group(array);
+          }
+        }
+      }
+
+      player = new Passenger({
+        radius: 5,
+        speed: 5,
+        color: new RGBA(50,100,255),
+        avoidanceRadius: 20,
+        fill: true,
+        label: "you"
+      });
+      player.visualOffset = new Vector2();
+      player.update = function(dt) {
+        let input = new Vector2();
+        if (keysdown["w"] || keysdown["ArrowUp"]) input.y--;
+        if (keysdown["a"] || keysdown["ArrowLeft"]) input.x--;
+        if (keysdown["s"] || keysdown["ArrowDown"]) input.y++;
+        if (keysdown["d"] || keysdown["ArrowRight"]) input.x++;
+        this.direction = input.normalize();
+
+        this.avoidPassengers(dt);
+        this.move(dt);
+      }
+    }
+  </script>
+</html>
