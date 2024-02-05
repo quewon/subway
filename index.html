@@ -8,13 +8,24 @@
   </head>
   <body>
 
-    <canvas></canvas>
+    <canvas id="game"></canvas>
+    <canvas id="notebook"></canvas>
+
+    <!-- <img src="assets/imgs/bg.png" alt=""> -->
+
+    <div id="playprompt">loading...</div>
+
+    <div id="lighten"></div>
+    <canvas id="noise"></canvas>
+    <div id="dark"></div>
 
   </body>
 
   <script type="text/javascript" src="js/util.js"></script>
+  <script type="text/javascript" src="js/howler.min.js"></script>
   <script type="text/javascript" src="js/audio.js"></script>
 
+  <script type="text/javascript" src="js/img.js"></script>
   <script type="text/javascript" src="js/engine.js"></script>
   <script type="text/javascript" src="js/subway.js"></script>
 
@@ -22,32 +33,55 @@
 
   <script type="text/javascript" src="js/things/thing.js"></script>
   <script type="text/javascript" src="js/things/passenger.js"></script>
+  <script type="text/javascript" src="js/things/package.js"></script>
   <script type="text/javascript" src="js/things/scene.js"></script>
   <script type="text/javascript">
-    BACKGROUND_COLOR = "white";
+    // let gradient = context.createLinearGradient(-300, -600, 300, 600);
+    var GRADIENT;
+
+    const SHADOW_DEPTH = 10;
+    const SHADOW_COLOR = "#9fb8c7";
+    const BACKGROUND_COLOR = "white";
+    const LINES_COLOR = "black";
+    const GROUP_LINES_COLOR = new RGBA(200,20,10,.3).toString();
+
+    var STATION_NAMES = [];
+    function restockStationNames() {
+      STATION_NAMES = ["house", "apt.", "rd.", "bridge", "castle", "fort", "gov", "park", "center", "field", "farm", "lake", "river", "bank", "beach", "port", "garden", "wood", "bird", "st.", "co.", "valley", "mt.", "fig", "gum", "hall", "old", "art", "factory", "way", "new", "brook", "town", "univ.", "school", "shop", "sleep", "terminal", "crowd", "train", "church", "rain", "sun"];
+    }
+    restockStationNames();
+
+    var RECIPIENT_NAMES = [];
+    function restockRecipientNames() {
+      RECIPIENT_NAMES = ["jip", "ib", "goa", "sin", "sun", "aba"];
+    }
+    restockRecipientNames();
 
     var player;
     var subway;
 
-    load_sounds(init);
+    load_images(function() {
+      load_sounds(init);
+    });
 
     function init() {
       window.onresize();
-      setInterval(update, 1);
-      animate();
 
       //
 
       subway = new Subway();
 
       if (subway.lines.length < 2) {
-        console.log("subway generation fail");
+        console.log("subway generation failed. retrying.");
         init();
         return;
       }
 
+      console.log("generating passengers...");
+
       for (let station of subway.stations) {
-        for (let i=0; i<2; i++) {
+        for (let i=0; i<station.lines.length * 2; i++) {
+        // for (let i=0; i<1; i++) {
           let groupsize = Math.ceil(Math.random() * 5);
 
           if (groupsize == 1) {
@@ -62,26 +96,80 @@
         }
       }
 
+      for (let i=0; i<3; i++) {
+        new Package({ position: new Vector2(0, 200) });
+      }
+
+      //
+
+      update();
+      document.getElementById("playprompt").textContent = "click to begin";
+      document.onmousedown = document.oncontextmenu = function(e) {
+        e.preventDefault();
+        play();
+      }
+    }
+
+    function createPlayer() {
       player = new Passenger({
         radius: 5,
-        speed: 5,
-        color: new RGBA(50,100,255),
+        speed: 7,
+        color: new RGBA(238,21,21),
         avoidanceRadius: 20,
         fill: true,
-        label: "you"
+        label: "you",
+        position: new Vector2(0, 200)
       });
       player.visualOffset = new Vector2();
       player.update = function(dt) {
         let input = new Vector2();
-        if (keysdown["w"] || keysdown["ArrowUp"]) input.y--;
-        if (keysdown["a"] || keysdown["ArrowLeft"]) input.x--;
-        if (keysdown["s"] || keysdown["ArrowDown"]) input.y++;
-        if (keysdown["d"] || keysdown["ArrowRight"]) input.x++;
+        if (keysdown["KeyW"] || keysdown["ArrowUp"]) input.y--;
+        if (keysdown["KeyA"] || keysdown["ArrowLeft"]) input.x--;
+        if (keysdown["KeyS"] || keysdown["ArrowDown"]) input.y++;
+        if (keysdown["KeyD"] || keysdown["ArrowRight"]) input.x++;
         this.direction = input.normalize();
 
-        this.avoidPassengers(dt);
+        if (!this.unpushable && this.avoidanceRadius > 0) {
+          this.direction = this.direction.add(
+            this.avoidPhysicalThings()
+            .mul(.3 * dt/10)
+          );
+        }
+
         this.move(dt);
+
+        this.interacting = keysdown["Space"];
+
+        this.closestPackage = null;
+        let closestPackageDistance = Infinity;
+        for (let thing of this.scene.things) {
+          if (thing.tag == "package") {
+            if (circleRect(this.position, this.radius + this.avoidanceRadius, thing.position, thing.size)) {
+              let distance = this.position.distanceTo(thing.position.add(thing.size.div(2)));
+              if (distance < closestPackageDistance) {
+                closestPackageDistance = distance;
+                this.closestPackage = thing;
+              }
+            }
+          }
+        }
       }
+    }
+
+    function play() {
+      sounds.ambience.heathrow.loop(true);
+      sounds.ambience.heathrow.volume(.5);
+      sounds.ambience.heathrow.play();
+
+      document.getElementById("playprompt").classList.add("gone");
+
+      init_inputs();
+
+      animate();
+
+      // sounds["dialogue-random"][0].play();
+
+      createPlayer();
     }
   </script>
 </html>

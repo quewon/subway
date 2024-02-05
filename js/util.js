@@ -1,3 +1,56 @@
+// function rectsClosestCorners(r1, s1, r2, s2) {
+//   let points1 = [
+//     r1,
+//     r1.add(new Vector2(s1.x, 0)),
+//     r1.add(s1),
+//     r1.add(new Vector2(0, s1.y))
+//   ];
+//
+//   let points2 = [
+//     r2,
+//     r2.add(new Vector2(s2.x, 0)),
+//     r2.add(s2),
+//     r2.add(new Vector2(0, s2.y))
+//   ];
+//
+//   let closestPoints;
+//   let closestPointsDistance = Infinity;
+//
+//   for (let point of points1) {
+//     for (let point2 of points2) {
+//       if (closestPoints && closestPoints[0] == point2 && closestPoints[1] == point) continue;
+//
+//       let distance = point.distanceTo(point2);
+//       if (distance < closestPointsDistance) {
+//         closestPointsDistance = distance;
+//         closestPoints = [point, point2];
+//       }
+//     }
+//   }
+//
+//   return closestPoints;
+// }
+
+function pointInRect(point, rp, rsize) {
+  return point.x >= rp.x && point.x <= rp.x + rsize.x && point.y >= rp.y && point.y <= rp.y + rsize.y;
+}
+
+function pointInCircle(point, center, radius) {
+  return point.distanceTo(center) <= radius;
+}
+
+function rectRect(a, as, b, bs) {
+  if (
+    a.x <= b.x + bs.x &&
+    a.x + as.x >= b.x &&
+    a.y <= b.y + bs.y &&
+    a.y + as.y >= b.y
+  ) {
+    return true;
+  }
+  return false;
+}
+
 function circleRect(center,radius, rp,rsize) {
   var closestX, closestY;
   if (center.x <= rp.x) {
@@ -196,6 +249,13 @@ class Vector2 {
     return new Vector2(
       lerp(this.x, v2.x, t),
       lerp(this.y, v2.y, t)
+    )
+  }
+
+  abs() {
+    return new Vector2(
+      Math.abs(this.x),
+      Math.abs(this.y)
     )
   }
 }

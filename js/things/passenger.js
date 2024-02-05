@@ -1,64 +1,68 @@
-class Passenger extends Thing {
+class Passenger extends PhysicalThing {
   constructor(p) {
     super(p);
 
     p = p || {};
     this.tag = "passenger";
-    this.group = p.group || null;
 
     this.colorOrigin = p.color || new RGBA(30, 30, 30);
     this.fill = p.fill == null ? false : p.fill;
-    this.label = p.label || null;
 
     this.radius = p.radius == null ? 5 : p.radius;
     this.avoidanceRadius = p.avoidanceRadius == null ? Math.random() * 15 + 5 : p.avoidanceRadius;
-    this.speed = p.speed == null ? 1 + Math.random() * 4 : p.speed;
-    this.direction = new Vector2();
-    this.velocity = new Vector2();
 
-    this.collisionsCounter = 0;
-  }
-
-  linkToScene(scene, door, offset) {
-    if (this.linkedScene) {
-      let od = this.linkDoor.relativePosition
-        .add(this.linkDoor.confiner.position)
-        .sub(this.position.add(this.linkOffset))
-        .magnitude();
-
-      let nd = door.relativePosition
-        .add(door.confiner.position)
-        .sub(this.position.add(offset))
-        .magnitude();
-
-      if (nd <= od) {
-        this.unlink();
-      } else {
-        return;
-      }
+    if (Math.random() > .5) {
+      // this.speakingRadius = 50;
+      this.volumeRadius = 150;
+      // this.dialogueHowl = sounds["dialogue-random"][sounds["dialogue-random"].length * Math.random() | 0];
     }
 
-    this.linkedScene = scene;
-    this.linkOffset = offset;
-    this.linkDoor = door;
+    this.routePreference = Math.random() > .5 ? "simple" : "short";
 
-    scene.linkedThings.push(this);
+    this.home = this.scene.station;
+    this.isTraveling = p.isTraveling != null ? p.isTraveling : true;
+
+    this.interacting = false;
   }
 
-  moveToLinkedScene() {
-    if (this.scene == this.linkedScene) return;
+  setDestination() {
+    if (this.scene.tag == "station" && this.scene.station == this.home) {
+      let potentialDestinations = [];
+      for (let station of subway.stations) {
+        if (station == this.home) continue;
+        for (let i=0; i<station.lines.length; i++) {
+          potentialDestinations.push(station);
+        }
+      }
+      this.destination = potentialDestinations[potentialDestinations.length * Math.random() | 0];
+    } else {
+      this.destination = this.home;
+    }
 
-    this.exit();
-    this.enter(this.linkedScene);
-    this.position = this.position.add(this.linkOffset);
-    this.unlink();
+    if (this.group && this == this.group.head) {
+      for (let passenger of this.group.passengers) {
+        if (passenger == this) continue;
+        passenger.destination = this.destination;
+      }
+    }
   }
 
-  unlink() {
-    if (!this.linkedScene) return;
-    
-    this.linkedScene.linkedThings.splice(this.linkedScene.linkedThings.indexOf(this), 1);
-    this.linkedScene = null;
+  enter(scene) {
+    if (scene == this.scene) return;
+
+    this.scene = scene;
+    this.scene.things.push(this);
+
+    if (this == player) {
+      subway.setScene(scene);
+    }
+
+    if (scene.tag == "station") {
+      this.route = null;
+      if (scene == this.home) {
+        this.destination = null;
+      }
+    }
   }
 
   draw() {
@@ -68,6 +72,70 @@ class Passenger extends Thing {
     if (this.group) {
       this.drawGroupLines();
     }
+
+    if (this.dialogueId) this.drawSpeakingRadius();
+  }
+
+  drawSpeakingRadius() {
+    // RADIUS OPTION 1
+
+    // let rings = 3;
+    //
+    // let minRadius = this.avoidanceRadius + this.radius;
+    // let maxRadius = this.radius + this.volumeRadius;
+    // for (let i=this.dialogue.currentTime%1; i<=rings; i++) {
+    //   let radius = minRadius + ((maxRadius - this.avoidanceRadius) * i/rings);
+    //   let alpha = (1 - (i - 1)/rings)/2;
+    //   context.strokeStyle = "rgba(191, 212, 217, "+alpha+")";
+    //   context.beginPath();
+    //   context.arc(this.position.x, this.position.y, radius, 0, Math.PI*2);
+    //   context.stroke();
+    // }
+
+    // RADIUS OPTION 1+
+
+    // let radius = minRadius;
+    // let alpha = 1;
+    // context.strokeStyle = "rgba(191, 212, 217, "+alpha+")";
+    // context.beginPath();
+    // context.arc(this.position.x, this.position.y, radius, 0, Math.PI*2);
+    // context.stroke();
+
+
+    // RADIUS OPTION 2
+
+    // let x = this.position.x;
+    // let y = this.position.y;
+    //
+    // let gradient = context.createRadialGradient(x, y, 0, x, y, this.volumeRadius * 1.5);
+    // gradient.addColorStop(0, "rgba(191, 212, 217, .1)");
+    // gradient.addColorStop(1, "rgba(255, 255, 255, 0)");
+    //
+    // context.fillStyle = gradient;
+    // context.beginPath();
+    // context.arc(x, y, this.radius + this.volumeRadius, 0, Math.PI * 2);
+    // context.fill();
+
+    // RADIUS OPTION 2+
+
+    // context.strokeStyle = "rgba(191, 212, 217, .3)";
+    // context.stroke();
+
+
+    // LABEL OPTION
+
+    context.font = "13px sans-serif";
+    context.textAlign = "center";
+    context.textBaseline = "bottom";
+
+    // let ellipses = "";
+    // let ellipseSpeed = 2;
+    // for (let i=1; i<(this.dialogue.currentTime * ellipseSpeed)%4; i++) {
+    //   ellipses += ".";
+    // }
+
+    context.fillStyle = "rgba(157, 193, 201, "+Math.max(this.dialogueHowl.volume(null, this.dialogueId), .2)+")";
+    context.fillText("talking", this.position.x, this.position.y - this.radius);
   }
 
   drawSelf() {
@@ -93,7 +161,7 @@ class Passenger extends Thing {
     }
 
     if (this.label) {
-      context.font = "12px sans-serif";
+      context.font = "13px sans-serif";
       context.textAlign = "center";
       context.textBaseline = "top";
       context.fillText(this.label, this.position.x, this.position.y + this.radius);
@@ -112,8 +180,7 @@ class Passenger extends Thing {
   }
 
   drawGroupLines() {
-    let color = new RGBA(200,20,10,.3);
-    context.strokeStyle = color.toString();
+    context.strokeStyle = GROUP_LINES_COLOR;
 
     for (let passenger of this.group.passengers) {
       if (passenger == this || passenger.scene != this.scene) continue;
@@ -138,37 +205,127 @@ class Passenger extends Thing {
 
   update(dt) {
     this.direction = new Vector2();
-    this.avoidPassengers(dt);
-    if (this.group) {
-      this.followGroup(dt);
+
+    if (!this.unpushable && this.avoidanceRadius > 0) {
+      this.direction = this.direction.add(
+        this.avoidPhysicalThings()
+        .mul(.3 * dt/10)
+      );
     }
+
+    if (!this.dialogueId) {
+      if (this.group) {
+        this.direction = this.direction.add(
+          this.followGroup()
+          .mul(this.group.strength * dt/10)
+        );
+      }
+
+      if (this.isTraveling) {
+        this.direction = this.direction.add(
+          this.headToDestination()
+          .mul(dt/10)
+        );
+      }
+    }
+
+    this.direction = this.direction.normalize();
+
     this.move(dt);
+
+    if (this.dialogueHowl) this.speak();
   }
 
-  move(dt) {
-    this.velocity = this.velocity.div(1.1);
-    this.velocity = this.velocity.add(this.direction.mul(this.speed * dt/1000));
-    this.position = this.position.add(this.velocity);
+  speak() {
+    if (player && player.scene == this.scene) {
+      if (!this.dialogueEnded && !this.dialogueId) {
+        let someoneElseTalking = false;
 
-    this.collideWithPassengers(dt);
+        for (let passenger of this.scene.things) {
+          if (passenger.tag != "passenger" || passenger == this) continue;
+          if (
+            passenger.dialogueId &&
+            passenger.position.distanceTo(this.position) <= this.radius + this.volumeRadius + passenger.radius + passenger.volumeRadius
+          ) {
+            someoneElseTalking = true;
+            break;
+          }
+        }
+
+        if (!someoneElseTalking) {
+          let distance = this.position.distanceTo(player.position);
+
+          if (this.speakingRadius) {
+            let radius = this.radius + this.speakingRadius + player.radius;
+            if (distance <= this.radius + this.speakingRadius + player.radius) {
+              this.startSpeaking();
+            }
+          } else {
+            this.startSpeaking();
+          }
+        }
+      }
+    } else {
+      this.stopSpeaking();
+    }
+
+    if (this.dialogueId) {
+      let mar = Math.max(this.avoidanceRadius, player.avoidanceRadius);
+      let distance = this.position.distanceTo(player.position) - mar;
+      let radius = this.radius + this.volumeRadius + player.radius - mar;
+      let volume = 1 - Math.max(Math.min((distance - this.radius)/radius, 1), 0);
+
+      let d = this.position.sub(player.position).normalize();
+      let pan = Math.min(Math.max(d.x, -.5), .5);
+
+      this.dialogueHowl.volume(volume, this.dialogueId);
+      this.dialogueHowl.stereo(pan, this.dialogueId);
+    }
   }
 
-  avoidPassengers(dt) {
-    if (this.avoidanceRadius == 0) return;
+  startSpeaking() {
+    if (this.dialogueId) return;
 
+    this.dialogueId = this.dialogueHowl.play();
+    this.dialogueHowl.once("end", function() {
+      this.dialogueEnded = true;
+      this.stopSpeaking();
+    }.bind(this), this.dialogueId);
+  }
+
+  stopSpeaking() {
+    if (!this.dialogueId) return;
+
+    this.dialogueHowl.stop(this.dialogueId);
+    this.dialogueId = null;
+  }
+
+  avoidPhysicalThings() {
     let desiredDirection = new Vector2();
 
-    for (let passenger of this.scene.things) {
-      if (passenger.tag != "passenger" || passenger == this) continue;
+    for (let thing of this.scene.things) {
+      if (!thing.isPhysical || thing == this) continue;
+      if (player == this && !thing.radius) continue;
 
-      let distance = Math.max(this.position.distanceTo(passenger.position), .01);
-      let radius = this.radius + this.avoidanceRadius + passenger.radius;
+      let position;
+      let radius;
+      if (!thing.radius) {
+        position = thing.position.add(thing.size.div(2));
+        radius = Math.max(thing.size.x, thing.size.y)/2;
+      } else {
+        position = thing.position;
+        radius = thing.radius;
+      }
+
+      let distance = Math.max(this.position.distanceTo(position), .01);
+
+      radius = this.radius + this.avoidanceRadius + radius;
       if (distance <= radius) {
-        let direction = passenger.position.sub(this.position).jiggle(distance).normalize();
+        let direction = position.sub(this.position).jiggle(distance).normalize();
 
         let avoidStrength = radius/distance;
 
-        if (this.group && passenger.group != this.group) {
+        if (this.group && thing.group != this.group) {
           avoidStrength *= 5;
         }
 
@@ -176,16 +333,10 @@ class Passenger extends Thing {
       }
     }
 
-    desiredDirection = desiredDirection.normalize();
-
-    let steerStrength = .3 * dt/10;
-
-    this.direction = this.direction
-      .add(desiredDirection.mul(steerStrength))
-      .normalize();
+    return desiredDirection.normalize();
   }
 
-  followGroup(dt) {
+  followGroup() {
     let desiredDirection = new Vector2();
 
     for (let passenger of this.group.passengers) {
@@ -200,42 +351,71 @@ class Passenger extends Thing {
       }
     }
 
-    desiredDirection = desiredDirection.normalize();
-
-    let steerStrength = this.group.strength * dt/10;
-
-    this.direction = this.direction
-      .add(desiredDirection.mul(steerStrength))
-      .normalize();
+    return desiredDirection.normalize();
   }
 
-  collideWithPassengers(dt) {
-    let force = new Vector2();
+  headToDestination() {
+    let desiredDirection = new Vector2();
 
-    for (let passenger of this.scene.things) {
-      if (passenger.tag != "passenger" || passenger == this) continue;
-
-      let distance = this.position.distanceTo(passenger.position);
-      let radii = this.radius + passenger.radius;
-      if (distance <= radii) { // colliding
-        let direction = passenger.position.sub(this.position).normalize();
-        direction = direction.jiggle();
-
-        let pushStrength = radii/Math.max(distance, .1) * dt/100;
-        pushStrength = Math.min(pushStrength, 1);
-
-        force = force.sub(direction.mul(pushStrength));
-
-        this.collisionsCounter++;
-        passenger.collisionsCounter++;
+    if (this.isTraveling && !this.destination) {
+      if (this.group) {
+        if (this == this.group.head) {
+          let groupTogether = true;
+          for (let passenger of this.group.passengers) {
+            if (passenger.scene != this.scene) {
+              groupTogether = false;
+              break;
+            }
+          }
+          if (groupTogether) {
+            this.setDestination();
+          }
+        }
+      } else {
+        this.setDestination();
       }
     }
 
-    this.applyForce(force);
-  }
+    if (this.destination && !this.route && this.scene.tag == "station") {
+      let station = this.scene.station;
+      if (this.routePreference == "simple") {
+        this.route = subway.getSimplestRoute(station, this.destination);
+      } else {
+        this.route = subway.getShortestRoute(station, this.destination);
+      }
+    }
 
-  applyForce(force) {
-    this.velocity = this.velocity.add(force);
+    if (this.route) {
+      let route = this.route.route;
+      let direction = route[0].direction;
+
+      if (!route[1] || !route[1].station) {
+        console.log(this.home, this.destination, this.route);
+      }
+
+      let nextStation = route[1].station;
+
+      if (this.scene.tag == "train") {
+        let train = this.scene.train;
+        // are the doors open ?
+        // is the train stopped at the station i need to get off at?
+        // which way do i walk to get out of the train?
+
+        // if the doors are not open, just sort of wander...
+      } else {
+        let line = route[1].line;
+        let station = this.scene.station;
+        let doors = station.doors;
+
+        // which door ?
+        // pathfinding to door
+
+        // if the door's open, i wanna enter
+        // if not, wander around it ..? or stop in front of it
+      }
+    }
+
+    return desiredDirection;
   }
 }
 
@@ -243,16 +423,11 @@ class Group {
   constructor(passengers) {
     this.passengers = passengers || [];
     this.strength = .3;
+    this.head = this.passengers[0];
+
     for (let passenger of this.passengers) {
       passenger.group = this;
+      passenger.routePreference = this.head.routePreference;
     }
-  }
-
-  draw() {
-
-  }
-
-  update(dt) {
-
   }
 }

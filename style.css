@@ -3,15 +3,72 @@ html, body {
   width: 100%;
   height: 100%;
   overflow: hidden;
+  font-size: 13px;
+  font-family: sans-serif;
+  color: black;
 
   /* background: url("assets/imgs/bg.png"); */
   background-size: cover;
 }
 
-canvas {
+#game {
+  background: white;
+}
+
+canvas, div, img {
   width: 100%;
   height: 100%;
   position: absolute;
   top: 0;
   left: 0;
+}
+
+button {
+  margin: 0;
+  padding: 0;
+
+  color: inherit;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
+}
+button:hover {
+  text-decoration: underline;
+}
+
+.gone {
+  display: none !important;
+}
+
+#playprompt {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#lighten {
+  mix-blend-mode: lighten;
+  background: #5b6d78;
+}
+
+#noise {
+  opacity: .3;
+  background: #f7f5f0;
+  mix-blend-mode: multiply;
+}
+
+#dark {
+  display: none;
+}
+body.dark #dark {
+  display: block;
+  background: #f7f5f0;
+  mix-blend-mode: exclusion;
+}
+
+img {
+  /* mix-blend-mode: color-burn; */
+  opacity: .3;
 }

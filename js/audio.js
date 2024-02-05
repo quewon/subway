@@ -1,33 +1,69 @@
 var sounds = {};
+
+var soundslist = {
+  "ambience": ["heathrow"],
+  "dialogue-random": 1
+}
 function load_sounds(onload) {
-  var folders = {
-    // "hit": 18
-  };
+  console.log("loading sounds...");
 
-  if (Object.keys(folders).length == 0) {
-    onload();
-    return;
-  }
+  let soundsToLoad = 0;
 
-  var unloadedSounds = 0;
+  for (let folder in soundslist) {
+    let data = soundslist[folder];
 
-  for (let folder in folders) {
-    sounds[folder] = [];
-    for (let i=1; i<=folders[folder]; i++) {
-      unloadedSounds++;
+    if (Array.isArray(data)) {
+      sounds[folder] = {};
+      for (let filename of data) {
+        soundsToLoad++;
 
-      let filenumber = i<10 ? "0"+i : i;
+        let sound = new Howl({
+          src: ["assets/sounds/"+folder+"/"+filename+".wav"]
+        });
+        sound.once('load', function() {
+          soundsToLoad--;
+          if (soundsToLoad <= 0) {
+            onload();
+          }
+        });
 
-      let sound = new Audio("assets/"+folder+"/"+filenumber+".wav");
-      sound.addEventListener("canplaythrough", function() {
-        unloadedSounds--;
-        if (unloadedSounds == 0) {
-          onload();
-          unloadedSounds = -1;
-        }
-      }.bind(this));
+        // let sound = new Audio();
+        // sound.src = "assets/sounds/"+folder+"/"+filename+".wav";
+        // sound.oncanplaythrough = function() {
+        //   soundsToLoad--;
+        //   if (soundsToLoad <= 0) {
+        //     onload();
+        //   }
+        //   this.oncanplaythrough = null;
+        // };
+        sounds[folder][filename] = sound;
+      }
+    } else {
+      sounds[folder] = [];
+      for (let i=1; i<=data; i++) {
+        soundsToLoad++;
 
-      sounds[folder].push(sound);
+        let sound = new Howl({
+          src: ["assets/sounds/"+folder+"/"+i+".wav"]
+        });
+        sound.once('load', function() {
+          soundsToLoad--;
+          if (soundsToLoad <= 0) {
+            onload();
+          }
+        });
+
+        // let sound = new Audio();
+        // sound.src = "assets/sounds/"+folder+"/"+i+".wav";
+        // sound.oncanplaythrough = function() {
+        //   soundsToLoad--;
+        //   if (soundsToLoad <= 0) {
+        //     onload();
+        //   }
+        //   this.oncanplaythrough = null;
+        // }
+        sounds[folder].push(sound);
+      }
     }
   }
 }

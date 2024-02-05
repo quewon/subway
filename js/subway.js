@@ -1,12 +1,16 @@
 class Subway {
   constructor() {
     this.time = 5 * 60 * 60;
+    this.timeScale = 3;
 
-    this.stationSpacing = 30;
+    this.mapLineWidth = 2;
+    this.mapStationRadius = 3;
+    this.stationSpacing = 50;
+    this.shadowsEnabled = true;
+
     this.durationMultiplier = 1;
 
     this.numOfLines = 5;
-    this.timeScale = 5;
 
     this.generateMap();
     this.generateMapLines();
@@ -17,17 +21,38 @@ class Subway {
 
     this.homebase = this.getLargestStation().scene;
     this.currentScene = this.homebase;
-    // this.currentScene = this.getLargestStation().lines[0].trains[0].scene;
-    // this.currentScene = this.lines[0].stations[0].scene;
+  }
 
-    // this.openMap();
+  setScene(scene) {
+    if (this.currentScene) {
+      this.saveNotes(this.currentScene);
+    }
+
+    this.currentScene = scene;
+    this.placeNotes();
+  }
+
+  saveNotes(scene) {
+    if (!subway.currentScene.notebookEdited) return;
+
+    scene.notebook = noteContext.getImageData(0, 0, notebook.width, notebook.height);
+    subway.currentScene.notebookEdited = false;
+  }
+
+  placeNotes() {
+    noteContext.clearRect(0, 0, notebook.width, notebook.height);
+
+    let data = this.currentScene.notebook;
+    noteContext.putImageData(data, (notebook.width - data.width)/2, (notebook.height - data.height)/2);
   }
 
   generateMap() {
+    console.log("generating map...");
+
     this.lines = [];
     var lines = this.numOfLines;
 
-    let initialColor = new RGBA(240,150,0);
+    let initialColor = new RGBA(240,200,120);
     let lastPosition = new Vector2();
     let min = new Vector2(Infinity, Infinity);
     let max = new Vector2(-Infinity, -Infinity);
@@ -84,6 +109,7 @@ class Subway {
 
     min = new Vector2(Infinity, Infinity);
     max = new Vector2(-Infinity, -Infinity);
+    context.font = "10px sans-serif";
     for (let i=this.stations.length-1; i>=0; i--) {
       let station = this.stations[i];
       if (station.lines.length == 0) {
@@ -94,20 +120,37 @@ class Subway {
       station.position = station.position.jiggle(10);
       station.createScene();
 
-      if (station.position.x - station.maxRadius < min.x) min.x = station.position.x - station.maxRadius;
-      if (station.position.y - station.maxRadius < min.y) min.y = station.position.y - station.maxRadius;
-      if (station.position.x + station.maxRadius > max.x) max.x = station.position.x + station.maxRadius;
-      if (station.position.y + station.maxRadius > max.y) max.y = station.position.y + station.maxRadius;
+      let radius = this.mapStationRadius;
+      let width = this.mapStationRadius + context.measureText(station.name).width;
+      let height = this.mapStationRadius + 12;
+
+      if (station.position.x - radius < min.x) min.x = station.position.x - radius;
+      if (station.position.y - radius < min.y) min.y = station.position.y - radius;
+      if (station.position.x + width > max.x) max.x = station.position.x + width;
+      if (station.position.y + height > max.y) max.y = station.position.y + height;
     }
+    context.font = "13px sans-serif";
 
     this.size = max.sub(min);
 
+    let mino = min.add(this.size.div(2));
     for (let station of this.stations) {
-      station.position = station.position.sub(min).sub(this.size.div(2));
+      station.position = station.position.sub(mino);
+    }
+    mino = mino.sub(new Vector2(this.stationSpacing/4, this.stationSpacing/4));
+    for (let line of this.lines) {
+      if (line.type == "circle") {
+        line.position = line.position.sub(mino);
+      } else {
+        line.p1 = line.p1.sub(mino);
+        line.p2 = line.p2.sub(mino);
+      }
     }
   }
 
   generateMapLines() {
+    console.log("calculating map lines...");
+
     for (let line of this.lines) {
       line.generateSegments();
     }
@@ -136,7 +179,7 @@ class Subway {
 
           for (let i=0; i<overlappingSegments.length; i++) {
             let oseg = overlappingSegments[i];
-            let shift = direction.mul(2 * (i + .5 - overlappingSegments.length/2));
+            let shift = direction.mul(this.mapLineWidth * 2 * (i + .5 - overlappingSegments.length/2));
             oseg.a = oseg.a.add(shift);
             oseg.b = oseg.b.add(shift);
             oseg.shifted = true;
@@ -147,6 +190,8 @@ class Subway {
   }
 
   generateTrains() {
+    console.log("generating trains...")
+
     for (let line of this.lines) {
       line.generateTrains();
     }
@@ -167,9 +212,9 @@ class Subway {
 
   updateMap(dt) {
     if (this.mapOpen) {
-      this.mapTimer += dt/1000;
+      this.mapTimer += dt/1000 * 1.5;
     } else if (this.mapTimer > 0) {
-      this.mapTimer -= dt/1000;
+      this.mapTimer -= dt/1000 * 3;
     }
 
     for (let line of this.lines) {
@@ -195,6 +240,23 @@ class Subway {
     }
   }
 
+  drawStationInfo(text1, text2) {
+    context.fillStyle = context.strokeStyle = LINES_COLOR;
+
+    let y = -window.innerHeight/2 + 20;
+
+    context.font = "13px sans-serif";
+    context.textAlign = "center";
+    context.textBaseline = "top";
+    context.fillText(text1.toUpperCase(), 0, y);
+
+    y += context.measureText(text1).fontBoundingBoxDescent + 5;
+
+    context.font = "bold 30px sans-serif";
+    context.textBaseline = "top";
+    context.strokeText(text2.toUpperCase(), 0, y);
+  }
+
   draw() {
     if (this.currentScene) this.currentScene.draw();
 
@@ -202,59 +264,42 @@ class Subway {
   }
 
   drawMap() {
-    let padded = this.size.add(new Vector2(10, 10));
-
-    context.fillStyle = "black";
-    context.fillText("you are right now looking at a map of the subway", 0, -window.innerHeight/2 + 5);
+    let padded = this.size.add(new Vector2(this.stationSpacing, this.stationSpacing));
 
     context.beginPath();
     context.rect(-padded.x/2, -padded.y/2, padded.x, padded.y);
     context.fillStyle = BACKGROUND_COLOR;
-    // context.globalAlpha = this.mapTimer * 4;
+    // context.globalAlpha = this.mapTimer * 5;
     context.fill();
     // context.globalAlpha = 1;
 
-    if (this.currentScene.tag == "station") {
-      context.strokeStyle = this.currentScene.station.lines[0].color.toString();
-    } else {
-      context.strokeStyle = this.currentScene.line.color.toString();
-    }
-
-    context.setLineDash([2]);
+    context.strokeStyle = LINES_COLOR;
     context.stroke();
-    context.setLineDash([]);
 
     for (let line of this.lines) {
-      if (this.mapTimer < .1) {
+      if (this.mapTimer < .3) {
         line.drawShape();
       } else {
         line.drawSegments();
       }
     }
-    if (this.mapTimer > .4) {
+    if (this.mapTimer > .5) {
       for (let station of this.stations) {
         station.draw();
+      }
 
-        if (this.currentScene == station.scene) {
-          let x = station.position.x;
-          let y = station.position.y - 5;
+      for (let station of this.stations) {
+        station.drawName();
 
-          context.fillStyle = player.color.toString();
-          context.fillText("✷", x, y);
-
-          x = -this.size.x/2;
-          y = padded.y/2 + 5;
-          context.textAlign = "left";
-          context.fillText("✷ : you are here", x, y);
-          context.textAlign = "center";
-        }
+        // if (this.currentScene == station.scene) {
+        //   context.font = "13px sans-serif";
+        //   context.fillStyle = player.color.toString();
+        //   context.textAlign = "left";
+        //   context.textBaseline = "bottom";
+        //   context.fillText("✱ : you are here", -padded.x/2 + 5, padded.y/2 - 5); //✷
+        // }
       }
     }
-    // for (let line of this.lines) {
-    //   line.drawTrains();
-    // }
-
-    this.drawTime();
   }
 
   getTimeString() {
@@ -267,7 +312,9 @@ class Subway {
   }
 
   drawTime() {
-    context.fillStyle = "black";
+    context.fillStyle = LINES_COLOR;
+    context.textAlign = "center";
+    context.textBaseline = "middle";
     context.fillText(this.getTimeString(), 0, -window.innerHeight/3);
   }
 
@@ -282,6 +329,93 @@ class Subway {
     this.mapOpen = false;
     this.mapTimer = .5;
   }
+
+  getStationByName(name) {
+    for (let station of this.stations) {
+      if (station.name == name) {
+        return station;
+      }
+    }
+    return null;
+  }
+
+  getAllRoutes(station1, station2, linesTaken) {
+    linesTaken = linesTaken || [];
+    let routes = [];
+
+    let sharedLines = station1.sharedLines(station2);
+    if (sharedLines.length > 0) {
+      for (let line of sharedLines) {
+        let route = line.getShortestRoute(station1, station2);
+        routes.push({
+          route: route,
+          length: route ? route.length : -1,
+          transfers: linesTaken.length
+        });
+      }
+    } else {
+      for (let line of station1.lines) {
+        if (linesTaken.indexOf(line) != -1) continue;
+        let transfers = line.getTransferStations();
+        for (let transfer of transfers) {
+          if (transfer == station1) continue;
+          let routeToTransfer = line.getShortestRoute(station1, transfer, linesTaken);
+          if (!routeToTransfer) continue;
+          routeToTransfer.splice(routeToTransfer.length - 1, 1);
+
+          let routesFromTransfer = this.getAllRoutes(transfer, station2, linesTaken.concat([line]));
+          for (let route of routesFromTransfer) {
+            let connected = routeToTransfer.concat(route.route);
+            routes.push({
+              route: connected,
+              length: connected.length,
+              transfers: route.transfers
+            });
+          }
+        }
+      }
+    }
+
+    return routes;
+  }
+
+  getShortestRoute(station1, station2) {
+    let routes = this.getAllRoutes(station1, station2);
+
+    let shortestRoute = null;
+    let shortestRouteLength = Infinity;
+    for (let route of routes) {
+      if (!route.route) continue;
+      if (route.length < shortestRouteLength) {
+        shortestRoute = route;
+        shortestRouteLength = route.length;
+      }
+    }
+
+    return shortestRoute;
+  }
+
+  getSimplestRoute(station1, station2) {
+    let routes = this.getAllRoutes(station1, station2);
+
+    let simplestRoute = null;
+    let fewestTransfers = Infinity;
+    for (let route of routes) {
+      if (!route.route) continue;
+      if (route.transfers < fewestTransfers) {
+        simplestRoute = route;
+        fewestTransfers = route.transfers;
+      }
+    }
+
+    return simplestRoute;
+  }
+
+  setName(name, replacement) {
+    let station = this.getStationByName(name);
+    station.name = replacement;
+    station.nameColor = player.color.toString();
+  }
 }
 
 class Line {
@@ -292,7 +426,7 @@ class Line {
 
     switch (this.type) {
       case "circle":
-        this.radius = 30 + Math.random() * 50;
+        this.radius = this.subway.stationSpacing + Math.random() * (this.subway.stationSpacing * 1.5);
         this.position = lastPosition.add(
           new Vector2(Math.random(), Math.random())
           .normalize()
@@ -302,19 +436,13 @@ class Line {
 
       case "line":
         this.p1 = lastPosition;
-        this.p2 = new Vector2(Math.random() * 300 - 150, Math.random() * 300 - 150);
-        while (this.p1.distanceTo(this.p2) <= this.subway.stationSpacing * 5) {
-          this.p2 = new Vector2(Math.random() * 300 - 150, Math.random() * 300 - 150);
-        }
+        let width = this.subway.stationSpacing * 7;
+        this.p2 = new Vector2(Math.random() * width - width/2, Math.random() * width - width/2);
         break;
     }
 
     this.stations = [];
 
-    // this.trainSize = new Vector2(
-    //   70 + Math.floor(Math.random() * 80),
-    //   150 + Math.floor(Math.random() * 150)
-    // );
     this.hallShape = Math.random() > .5 ? "circle" : "rect";
     this.trainSize = new Vector2(
       50 + Math.round(Math.random() * 50),
@@ -461,12 +589,16 @@ class Line {
 
     context.strokeStyle = this.color.toString();
 
+    context.lineWidth = this.subway.mapLineWidth;
+
     for (let segment of this.segments) {
       context.beginPath();
       context.moveTo(segment.a.x, segment.a.y);
       context.lineTo(segment.b.x, segment.b.y);
       context.stroke();
     }
+
+    context.lineWidth = 1;
   }
 
   drawStations() {
@@ -485,6 +617,74 @@ class Line {
     for (let train of this.trains) {
       train.update(dt);
     }
+  }
+
+  getTransferStations() {
+    let transfers = [];
+    for (let station of this.stations) {
+      if (station.lines.length > 1) transfers.push(station);
+    }
+    return transfers;
+  }
+
+  getRoute(station1, station2, direction) {
+    if (
+      this.stations.indexOf(station1) == -1 ||
+      this.stations.indexOf(station2) == -1
+    ) {
+      return null;
+    }
+
+    let route = [];
+
+    let stationIndex = this.stations.indexOf(station1) - direction;
+    let station;
+
+    while (station != station2) {
+      stationIndex += direction;
+
+      if (this.type == "line") {
+        if (stationIndex < 0 || stationIndex >= this.stations.length)
+          return null;
+      } else {
+        if (stationIndex < 0) stationIndex = this.stations.length - 1;
+        if (stationIndex >= this.stations.length) stationIndex = 0;
+      }
+
+      station = this.stations[stationIndex];
+      route.push({
+        station: station,
+        line: this,
+        direction: direction
+      });
+    }
+
+    return route;
+  }
+
+  getShortestRoute(station1, station2) {
+    let routes = [];
+
+    let route1 = this.getRoute(station1, station2, 1);
+    if (route1) routes.push(route1);
+
+    if (this.trains.length > 1) {
+      let route2 = this.getRoute(station1, station2, -1);
+      if (route2) routes.push(route2);
+    }
+
+    let shortestRoute = null;
+    let shortestRouteLength = Infinity;
+
+    for (let route of routes) {
+      if (!route) continue;
+      if (route.length < shortestRouteLength) {
+        shortestRoute = route;
+        shortestRouteLength = route.length;
+      }
+    }
+
+    return shortestRoute;
   }
 }
 
@@ -719,29 +919,59 @@ class Station {
     this.position = position;
     this.lines = [];
 
+    this.dotImage = images.dots[images.dots.length * Math.random() | 0];
+    this.dotOffset = new Vector2(Math.random() - .5, Math.random() - .5).normalize().mul(2);
+
+    this.nameColor = LINES_COLOR;
+
     this.subway.stations.push(this);
   }
 
   createScene() {
+    let ri = STATION_NAMES.length * Math.random() | 0;
+    this.name = STATION_NAMES[ri];
+    STATION_NAMES.splice(ri, 1);
+
     let lines = this.lines.length;
 
     this.scene = new StationScene(this);
-    this.maxRadius = 5 + (2 * this.lines.length-1);
+
+    if (STATION_NAMES.length == 0) {
+      restockStationNames();
+    }
   }
 
   draw() {
-    context.beginPath();
-    context.arc(this.position.x, this.position.y, 5, 0, Math.PI*2);
-    context.fillStyle = BACKGROUND_COLOR;
-    context.fill();
-
-    for (let i=0; i<this.lines.length; i++) {
-      let radius = 5 + (2 * i);
-      context.strokeStyle = this.lines[i].color.toString();
-
-      context.beginPath();
-      context.arc(this.position.x, this.position.y, radius, 0, Math.PI*2);
-      context.stroke();
+    if (subway.currentScene == this.scene) {
+      let star = images.map.star;
+      let width = star.width;
+      let height = star.height;
+      context.drawImage(star, this.position.x - width/2, this.position.y - height/2);
+    } else {
+      let w = this.dotImage.width/1.5;
+      let h = this.dotImage.height/1.5;
+      context.drawImage(this.dotImage, this.position.x - w/2 + this.dotOffset.x, this.position.y - h/2 + this.dotOffset.y, w, h);
     }
+  }
+
+  drawName() {
+    context.fillStyle = this.nameColor;
+    context.font = "12px sans-serif";
+    context.textAlign = "left";
+    context.textBaseline = "top";
+    context.fillText(this.name, this.position.x + 5 + this.dotOffset.x, this.position.y + 5 + this.dotOffset.y);
+    context.font = "13px sans-serif";
+  }
+
+  sharedLines(station) {
+    let sharedLines = [];
+
+    for (let line of this.lines) {
+      if (station.lines.indexOf(line) != -1) {
+        sharedLines.push(line);
+      }
+    }
+
+    return sharedLines;
   }
 }

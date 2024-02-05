@@ -8,6 +8,8 @@ class Scene {
     this.doors = doors || [];
     this.setSize();
 
+    this.notebook = new ImageData(1, 1);
+
     for (let confiner of this.confiners) {
       confiner.scene = this;
     }
@@ -16,8 +18,14 @@ class Scene {
     }
   }
 
+  drawUI() {
+    for (let thing of this.things) {
+      thing.drawUI();
+    }
+  }
+
   drawWalls() {
-    context.strokeStyle = "black";
+    context.strokeStyle = LINES_COLOR;
     context.beginPath();
     context.rect(-this.size.x/2, -this.size.y/2, this.size.x, this.size.y);
     context.stroke();
@@ -49,6 +57,7 @@ class Scene {
     this.camera();
     this.drawConfiners();
     this.drawThings();
+    this.drawThingsUI();
   }
 
   drawConfiners() {
@@ -102,7 +111,7 @@ class Scene {
 
   update(dt) {
     this.updateThings(dt);
-    this.confinePassengers(dt);
+    this.confineThings(dt);
   }
 
   updateThings(dt) {
@@ -111,38 +120,35 @@ class Scene {
     }
   }
 
-  confinePassengers(dt) {
-    let unconfinedPassengers = [];
-    for (let passenger of this.things) {
-      if (passenger.tag == "passenger") {
-        unconfinedPassengers.push(passenger);
+  confineThings(dt) {
+    let unconfinedThings = [];
+    for (let thing of this.things) {
+      if (thing.isPhysical) {
+        unconfinedThings.push(thing);
       }
     }
 
     for (let confiner of this.confiners) {
-      for (let passenger of this.things) {
-        if (passenger.tag == "passenger") {
-          let index = unconfinedPassengers.indexOf(passenger);
+      for (let thing of this.things) {
+        if (thing.isPhysical) {
+          let index = unconfinedThings.indexOf(thing);
           if (index == -1) continue;
-          if (confiner.passengerConfined(passenger)) {
-            passenger.previousConfiner = confiner;
-            unconfinedPassengers.splice(index, 1);
+          if (confiner.thingConfined(thing)) {
+            thing.previousConfiner = confiner;
+            unconfinedThings.splice(index, 1);
           }
         }
       }
     }
 
-    for (let passenger of unconfinedPassengers) {
-      //WARNING: this does not account for previousConfiners from different scenes. might cause issues later. probably will.
-      let confiner = passenger.previousConfiner || this.confiners[0];
-      confiner.confine(dt, passenger);
+    for (let thing of unconfinedThings) {
+      let confiner = thing.previousConfiner || this.confiners[0];
+      confiner.confine(dt, thing);
     }
 
     for (let confiner of this.confiners) {
-      for (let passenger of this.linkedThings) {
-        if (confiner.passengerConfined(passenger, passenger.linkOffset)) {
-          if (confiner.resolveVisitor) confiner.resolveVisitor(passenger);
-        }
+      for (let thing of this.linkedThings) {
+        if (confiner.resolveVisitor) confiner.resolveVisitor(thing);
       }
     }
   }
@@ -215,8 +221,8 @@ class StationScene extends Scene {
       rect1.isPlatform = true;
 
       confiners.push(rect1);
-      doors.push(new Door(rect1, new Vector2(0, .5), new Vector2(0, 2.5)));
       doors.push(new Door(rect1, new Vector2(1, .5), new Vector2(0, 2.5)));
+      doors.push(new Door(rect1, new Vector2(0, .5), new Vector2(0, 2.5)));
 
       if (lineIndex+1 < station.lines.length) {
         let rect2 = new RectConfiner(
@@ -226,8 +232,8 @@ class StationScene extends Scene {
         rect2.isPlatform = true;
 
         confiners.push(rect2);
-        doors.push(new Door(rect2, new Vector2(0, .5), new Vector2(0, -2.5)));
         doors.push(new Door(rect2, new Vector2(1, .5), new Vector2(0, -2.5)));
+        doors.push(new Door(rect2, new Vector2(0, .5), new Vector2(0, -2.5)));
       }
 
       lineIndex += 2;
@@ -251,11 +257,11 @@ class StationScene extends Scene {
         if (lineIndex%2==1) yo = 0;
 
         this.trainPositions.push(new Vector2(
-          confiner.position.x - line.trainSize.x/2 - 5,
+          confiner.position.x + confiner.size.x + line.trainSize.x/2 + 5,
           confiner.position.y + line.trainSize.y/2 + line.trainSize.x/2 + yo
         ));
         this.trainPositions.push(new Vector2(
-          confiner.position.x + confiner.size.x + line.trainSize.x/2 + 5,
+          confiner.position.x - line.trainSize.x/2 - 5,
           confiner.position.y + line.trainSize.y/2 + line.trainSize.x/2 + yo
         ));
 
@@ -289,7 +295,6 @@ class StationScene extends Scene {
             trainIndex++;
           }
 
-          let playerHere = player.scene == this;
           let offset = new Vector2();
           if (!data.stopped) {
             let t = data.t;
@@ -331,15 +336,28 @@ class StationScene extends Scene {
     this.getTrainsHere();
     this.updateDoors(dt);
     this.updateThings(dt);
-    this.confinePassengers(dt);
+    this.confineThings(dt);
   }
 
   draw() {
     this.camera();
+
+    this.drawName();
+
+    if (subway.shadowsEnabled) {
+      this.drawConfinerShadows();
+      this.drawTrainsShadows();
+    }
     this.drawTrains();
     this.drawConfiners();
     this.drawTrainsThings();
     this.drawThings();
+
+    this.drawUI();
+  }
+
+  drawName() {
+    subway.drawStationInfo("this stop is", this.station.name+" station");
   }
 
   updateDoors(dt) {
@@ -368,10 +386,62 @@ class StationScene extends Scene {
     }
   }
 
+  drawConfinerShadows() {
+    for (let confiner of this.confiners) {
+      confiner.drawShadow();
+    }
+  }
+
+  drawTrainsShadows() {
+    for (let info of this.trainsHere) {
+      this.drawTrainShadow(info);
+    }
+  }
+
   drawTrains() {
     for (let info of this.trainsHere) {
       this.drawTrain(info);
     }
+  }
+
+  drawUI() {
+    for (let thing of this.things) {
+      thing.drawUI();
+    }
+
+    for (let info of this.trainsHere) {
+      let data = info.data;
+      let offset = info.position;
+      let scene = info.scene;
+
+      context.save();
+
+      context.translate(offset.x, offset.y);
+
+      scene.drawUI();
+
+      context.restore();
+    }
+  }
+
+  drawTrainShadow(info) {
+    let data = info.data;
+    let offset = info.position;
+    let scene = info.scene;
+
+    context.save();
+
+    context.translate(offset.x, offset.y);
+
+    if (!info.data.stopped) {
+      let t = info.data.t;
+      if (info.data.this_stop != this.station) t -= 1;
+      context.globalAlpha = lerp(0, 1, t * 2);
+    }
+
+    scene.drawShadow();
+
+    context.restore();
   }
 
   drawTrain(info) {
@@ -386,7 +456,7 @@ class StationScene extends Scene {
     if (!info.data.stopped) {
       let t = info.data.t;
       if (info.data.this_stop != this.station) t -= 1;
-      context.globalAlpha = lerp(0, 1, t);
+      context.globalAlpha = lerp(0, 1, t * 2);
     }
 
     if (scene.doors[info.index % 2].open) {
@@ -418,8 +488,8 @@ class TrainScene extends Scene {
 
     for (let confiner of confiners) {
       confiner.wallColor = train.line.color.toString();
-      doors.push(new Door(confiner, new Vector2(1, .5)));
       doors.push(new Door(confiner, new Vector2(0, .5)));
+      doors.push(new Door(confiner, new Vector2(1, .5)));
     }
 
     super(confiners, doors);
@@ -462,9 +532,11 @@ class TrainScene extends Scene {
       }
 
       this.drawTrack();
+      if (subway.shadowsEnabled) this.drawShadow();
       this.drawTrain();
       this.drawConfiners();
       this.drawThings();
+      this.drawUI();
     }
   }
 
@@ -481,19 +553,27 @@ class TrainScene extends Scene {
     context.stroke();
   }
 
-  drawTrain(covered) {
-    let color = new RGBA(this.line.color);
-    color.a = .3;
-
+  drawShadow() {
     context.translate(this.jiggleOffset.x, this.jiggleOffset.y);
 
-    context.fillStyle = color.toString();
+    context.fillStyle = SHADOW_COLOR;
+    context.beginPath();
+    context.arc(SHADOW_DEPTH/2, -this.size.y/2 + SHADOW_DEPTH/2, this.size.x/2, 0, Math.PI*2);
+    context.arc(SHADOW_DEPTH/2, this.size.y/2 + SHADOW_DEPTH/2, this.size.x/2, 0, Math.PI*2);
+    context.rect(-this.size.x/2 + SHADOW_DEPTH/2, -this.size.y/2 + SHADOW_DEPTH/2, this.size.x, this.size.y);
+    context.fill();
+  }
+
+  drawTrain(covered) {
+    context.translate(this.jiggleOffset.x, this.jiggleOffset.y);
+
+    context.fillStyle = BACKGROUND_COLOR;
+    context.strokeStyle = this.line.color.toString();
     context.beginPath();
     context.arc(0, -this.size.y/2, this.size.x/2, 0, Math.PI*2);
-    context.fill();
-    context.beginPath();
     context.arc(0, this.size.y/2, this.size.x/2, 0, Math.PI*2);
     context.fill();
+    context.stroke();
 
     if (covered) {
       context.fillStyle = this.line.color.toString();
@@ -519,7 +599,7 @@ class TrainScene extends Scene {
     }
 
     this.updateThings(dt);
-    this.confinePassengers(dt);
+    this.confineThings(dt);
   }
 
   updateThings(dt) {

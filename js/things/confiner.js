@@ -4,7 +4,7 @@ class RectConfiner {
     this.position = position || new Vector2();
     this.size = size || new Vector2(300, 400);
     this.floorColor = BACKGROUND_COLOR;
-    this.wallColor = "black";
+    this.wallColor = LINES_COLOR;
 
     this.doors = [];
   }
@@ -14,6 +14,13 @@ class RectConfiner {
       position: this.position,
       size: this.size
     }
+  }
+
+  drawShadow() {
+    context.fillStyle = SHADOW_COLOR;
+    context.beginPath();
+    context.rect(this.position.x + SHADOW_DEPTH, this.position.y + SHADOW_DEPTH, this.size.x, this.size.y);
+    context.fill();
   }
 
   drawWalls() {
@@ -38,41 +45,83 @@ class RectConfiner {
     }
   }
 
-  passengerConfined(passenger, offset) {
+  thingConfined(thing, offset) {
     offset = offset || new Vector2();
 
-    let cor = circleOutsideRect(passenger.position.add(offset), passenger.radius, this.position, this.size);
-    if (cor.direction.x == 0 && cor.direction.y == 0) {
-      return true;
-    }
-    return this.passengerInOpenDoor(passenger, offset);
-  }
+    if (thing.radius) {
+      let cor = circleOutsideRect(thing.position.add(offset), thing.radius, this.position, this.size);
+      if (cor.direction.x == 0 && cor.direction.y == 0) {
+        return true;
+      }
+    } else {
+      let a = this.position;
+      let as = this.size;
+      let b = thing.position.add(offset);
+      let bs = thing.size;
 
-  passengerInOpenDoor(passenger, offset) {
-    offset = offset || new Vector2();
-
-    for (let door of this.doors) {
-      if (door.open && door.passengerCollides(passenger, offset)) {
+      if (
+        b.x >= a.x &&
+        b.x + bs.x <= a.x + as.x &&
+        b.y >= a.y &&
+        b.y + bs.y <= a.y + as.y
+      ) {
         return true;
       }
     }
+
+    return this.thingInOpenDoor(thing, offset);
+  }
+
+  thingInOpenDoor(thing, offset) {
+    offset = offset || new Vector2();
+
+    for (let door of this.doors) {
+      if (door.open && door.thingCollides(thing, offset)) {
+        return true;
+      }
+    }
+
     return false;
   }
 
-  confine(dt, passenger) {
+  confine(dt, thing) {
     let force = new Vector2();
 
-    let cor = circleOutsideRect(passenger.position, passenger.radius, this.position, this.size);
+    let position;
+    let radius;
+    if (thing.radius) {
+      position = thing.position;
+      radius = thing.radius;
+    } else {
+      position = thing.position.add(thing.size.div(2));
+      radius = Math.max(thing.size.x, thing.size.y)/2;
+    }
+
+    let cor = circleOutsideRect(position, radius, this.position, this.size);
 
     force.x += cor.direction.x * Math.max(cor.distance.x/10, 1);
     force.y += cor.direction.y * Math.max(cor.distance.y/10, 1);
 
-    passenger.applyForce(force.mul(dt/100));
+    thing.applyForce(force.mul(dt/100));
   }
 
-  resolveVisitor(passenger) {
-    if (passenger.linkedScene && passenger.linkedScene == this.scene) {
-      passenger.moveToLinkedScene();
+  resolveVisitor(thing) {
+    if (thing.linkedScene && thing.linkedScene == this.scene) {
+      let collidedDoor;
+      for (let door of this.doors) {
+        if (door.thingCollides(thing, thing.linkOffset)) {
+          collidedDoor = door;
+          break;
+        }
+      }
+
+      if (collidedDoor) {
+        let direction = -collidedDoor.relativePosition.x;
+        if (Math.sign(player.velocity.x) == Math.sign(direction)) {
+          thing.moveToLinkedScene();
+          thing.previousConfiner = this;
+        }
+      }
     }
   }
 }
@@ -83,7 +132,7 @@ class CircleConfiner {
     this.position = position || new Vector2();
     this.radius = radius || 100;
     this.floorColor = BACKGROUND_COLOR;
-    this.wallColor = "black";
+    this.wallColor = LINES_COLOR;
   }
 
   getBounds() {
@@ -92,6 +141,13 @@ class CircleConfiner {
       position: this.position.sub(radius2),
       size: radius2.mul(2)
     }
+  }
+
+  drawShadow() {
+    context.fillStyle = SHADOW_COLOR;
+    context.beginPath();
+    context.arc(this.position.x + SHADOW_DEPTH, this.position.y + SHADOW_DEPTH, this.radius, 0, Math.PI*2);
+    context.fill();
   }
 
   drawWalls() {
@@ -113,38 +169,54 @@ class CircleConfiner {
 
   drawDoors() { }
 
-  passengerConfined(passenger, offset) {
+  thingConfined(thing, offset) {
     offset = offset || new Vector2();
 
-    let pc = passenger.position.add(offset);
-    let pr = passenger.radius;
+    if (thing.radius) {
+      let pc = thing.position.add(offset);
+      let pr = thing.radius;
 
-    let c = this.position;
-    let r = this.radius;
+      let c = this.position;
+      let r = this.radius;
 
-    if (pc.distanceTo(c) >= r - pr) {
-      return false;
+      if (pc.distanceTo(c) >= r - pr) {
+        return false;
+      }
+    } else {
+      let position = thing.position.add(offset);
+      let points = [
+        position,
+        position.add(new Vector2(thing.size.x, 0)),
+        position.add(thing.size),
+        position.add(new Vector2(0, thing.size.y))
+      ];
+      for (let point of points) {
+        if (!pointInCircle(point, this.position, this.radius)) {
+          return false;
+        }
+      }
     }
 
     return true;
   }
 
-  confine(dt, passenger) {
+  confine(dt, thing) {
     let force = new Vector2();
 
-    let pc = passenger.position;
-    let pr = passenger.radius;
+    let position;
+    if (thing.radius) {
+      position = thing.position;
+    } else {
+      position = thing.position.add(thing.size.div(2));
+    }
 
-    let c = this.position;
-    let r = this.radius;
-
-    let direction = c.sub(pc).normalize();
-    let distance = c.distanceTo(pc);
+    let direction = this.position.sub(position).normalize();
+    let distance = this.position.distanceTo(position);
 
     force.x += direction.x * distance/50;
     force.y += direction.y * distance/50;
 
-    passenger.applyForce(force.mul(dt/100));
+    thing.applyForce(force.mul(dt/100));
   }
 }
 
@@ -178,22 +250,37 @@ class Door {
     this.linkOffset = offset;
   }
 
-  passengerCollides(passenger, offset) {
+  thingCollides(thing, offset) {
     offset = offset || new Vector2();
-    let collides = circleRect(passenger.position.add(offset), passenger.radius, this.relativePosition.add(this.confiner.position), this.size);
 
-    if (this.linkedScene && passenger.linkedScene != this.scene) {
-      passenger.linkToScene(this.linkedScene, this, this.linkOffset);
+    if (thing.radius) {
+      let passenger = thing;
+
+      let collides = circleRect(passenger.position.add(offset), passenger.radius, this.relativePosition.add(this.confiner.position), this.size);
+
+      if (this.linkedScene && passenger.linkedScene != this.scene) {
+        passenger.linkToScene(this.linkedScene, this, this.linkOffset);
+      }
+
+      return circleRect(passenger.position.add(offset), passenger.radius, this.relativePosition.add(this.confiner.position), this.size);
+    } else {
+      if (this.linkedScene && thing.linkedScene != this.scene) {
+        thing.linkToScene(this.linkedScene, this, this.linkOffset);
+      }
+
+      return rectRect(thing.position.add(offset), thing.size, this.relativePosition.add(this.confiner.position), this.size);
     }
-
-    return circleRect(passenger.position.add(offset), passenger.radius, this.relativePosition.add(this.confiner.position), this.size);
   }
 
   draw() {
     let position = this.relativePosition.add(this.confiner.position);
 
     context.fillStyle = BACKGROUND_COLOR;
-    context.fillRect(position.x, position.y, this.size.x, this.size.y);
+    if (this.open) {
+      context.fillRect(position.x, position.y, this.size.x, this.size.y);
+    } else {
+      context.fillRect(position.x+1.25, position.y, this.size.x-2.7, this.size.y);
+    }
 
     if (!this.open) {
       context.strokeStyle = this.confiner.wallColor;

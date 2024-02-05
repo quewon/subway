@@ -1,15 +1,21 @@
-const canvas = document.querySelector("canvas");
+const canvas = document.getElementById("game");
 const context = canvas.getContext("2d");
 
-context.font = "11px normal serif";
-context.textBaseline = "middle";
-context.textAlign = "center";
+const notebook = document.getElementById("notebook");
+const noteContext = notebook.getContext("2d");
 
 function animate() {
+  context.lineCap = "round";
+
   context.setTransform(1, 0, 0, 1, 0, 0);
   context.translate(canvas.width/2, canvas.height/2);
   context.scale(window.devicePixelRatio, window.devicePixelRatio);
   context.clearRect(-canvas.width/2, -canvas.height/2, canvas.width, canvas.height);
+
+  context.fillStyle = GRADIENT;
+  context.beginPath();
+  context.rect(-canvas.width/2, -canvas.height/2, canvas.width, canvas.height);
+  context.fill();
 
   if (subway) subway.draw();
 
@@ -24,19 +30,126 @@ function update() {
   if (subway) subway.update(dt);
 
   previousTime = now;
+
+  requestAnimationFrame(update);
 }
 
 window.onresize = function() {
-  canvas.width = window.innerWidth * window.devicePixelRatio;
-  canvas.height = window.innerHeight * window.devicePixelRatio;
+  if (subway && subway.currentScene) {
+    subway.saveNotes(subway.currentScene);
+  }
+
+  let prevWidth = canvas.width;
+  let prevHeight = canvas.height;
+
+  notebook.width = canvas.width = window.innerWidth * window.devicePixelRatio;
+  notebook.height = canvas.height = window.innerHeight * window.devicePixelRatio;
+
+  if (canvas.width > noiseCanvas.width || canvas.height > noiseCanvas.height) {
+    if (canvas.width > noiseCanvas.width) noiseCanvas.width = canvas.width;
+    if (canvas.height > noiseCanvas.height) noiseCanvas.height = canvas.height;
+    noise();
+  }
+
+  if (subway && subway.currentScene) {
+    subway.placeNotes();
+  }
+
+  let gradient = context.createRadialGradient(0, 0, 300, 0, 0, window.innerHeight * 3);
+  gradient.addColorStop(0, BACKGROUND_COLOR);
+  gradient.addColorStop(.5, "rgba(191, 212, 217, .3)");
+  gradient.addColorStop(.7, "rgba(204, 122, 174, .1)");
+  GRADIENT = gradient;
 }
 
 var keysdown = {};
-document.onkeydown = function(e) {
-  if (e.repeat) return;
+var mouse = { down: false, rightdown: false };
 
-  keysdown[e.key] = true;
+function init_inputs() {
+  document.onkeydown = function(e) {
+    if (e.repeat) return;
+
+    keysdown[e.code] = true;
+  }
+  document.onkeyup = function(e) {
+    keysdown[e.code] = false;
+
+    if (e.code == "KeyC") {
+      noteContext.clearRect(0, 0, notebook.width, notebook.height);
+    }
+  }
+
+  document.onmousedown = function(e) {
+    let x = e.pageX * window.devicePixelRatio;
+    let y = e.pageY * window.devicePixelRatio;
+
+    mouse.down = true;
+    mouse.prevPoint = new Vector2(x, y);
+  }
+  document.oncontextmenu = function(e) {
+    mouse.rightdown = true;
+    e.preventDefault();
+  }
+  document.onmousemove = function(e) {
+    if (mouse.down || mouse.rightdown) {
+      let x = e.pageX * window.devicePixelRatio;
+      let y = e.pageY * window.devicePixelRatio;
+
+      if (mouse.rightdown) {
+        noteContext.strokeStyle = "white";
+        noteContext.globalCompositeOperation = "destination-out";
+        noteContext.lineWidth = 30;
+      } else {
+        noteContext.strokeStyle = "blue";
+        noteContext.globalCompositeOperation = "source-over";
+        noteContext.lineWidth = 2;
+      }
+
+      noteContext.lineCap = "round";
+
+      noteContext.beginPath();
+      noteContext.moveTo(mouse.prevPoint.x, mouse.prevPoint.y);
+      noteContext.lineTo(x, y);
+
+      // uncomment this to be able to draw on scenes :)
+      // noteContext.stroke();
+
+      mouse.prevPoint = new Vector2(x, y);
+
+      if (subway && subway.currentScene) {
+        subway.currentScene.notebookEdited = true;
+      }
+    }
+  }
+  document.onmouseup = function(e) {
+    mouse.down = false;
+    mouse.rightdown = false;
+    mouse.prevPoint = null;
+  }
+
+  window.onblur = function(e) {
+    for (let key in keysdown) {
+      keysdown[key] = false;
+    }
+    document.onmouseup();
+  }
 }
-document.onkeyup = function(e) {
-  keysdown[e.key] = false;
+
+const noiseCanvas = document.getElementById("noise");
+const noiseContext = noiseCanvas.getContext("2d");
+//https://codepen.io/fawority/pen/aVqWey
+function noise() {
+	const w = noiseCanvas.width,
+				h = noiseCanvas.height,
+				iData = noiseContext.createImageData(w, h),
+				buffer32 = new Uint32Array(iData.data.buffer),
+				len = buffer32.length
+
+	for (let i=0; i<len; i++) {
+    if (Math.random() < 0.5) {
+      buffer32[i] = 0x2f000000;
+    }
+  }
+
+	noiseContext.putImageData(iData, 0, 0);
 }
