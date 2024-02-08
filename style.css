@@ -54,9 +54,11 @@ button:hover {
 }
 
 #noise {
-  opacity: .3;
+  opacity: .2;
   background: #f7f5f0;
   mix-blend-mode: multiply;
+  /* image-rendering: crisp-edges;
+  image-rendering: pixelated; */
 }
 
 #dark {

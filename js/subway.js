@@ -19,7 +19,8 @@ class Subway {
     this.mapOpen = false;
     this.mapTimer = 0;
 
-    this.homebase = this.getLargestStation().scene;
+    // this.homebase = this.getLargestStation().scene;
+    this.homebase = this.lines[0].stations[0].scene;
     this.currentScene = this.homebase;
   }
 
@@ -243,7 +244,7 @@ class Subway {
   drawStationInfo(text1, text2) {
     context.fillStyle = context.strokeStyle = LINES_COLOR;
 
-    let y = -window.innerHeight/2 + 20;
+    let y = -(window.innerHeight * GAME_SCALE)/2 + 20;
 
     context.font = "13px sans-serif";
     context.textAlign = "center";
@@ -269,9 +270,7 @@ class Subway {
     context.beginPath();
     context.rect(-padded.x/2, -padded.y/2, padded.x, padded.y);
     context.fillStyle = BACKGROUND_COLOR;
-    // context.globalAlpha = this.mapTimer * 5;
     context.fill();
-    // context.globalAlpha = 1;
 
     context.strokeStyle = LINES_COLOR;
     context.stroke();
@@ -315,19 +314,23 @@ class Subway {
     context.fillStyle = LINES_COLOR;
     context.textAlign = "center";
     context.textBaseline = "middle";
-    context.fillText(this.getTimeString(), 0, -window.innerHeight/3);
+    context.fillText(this.getTimeString(), 0, -(window.innerHeight * GAME_SCALE)/3);
   }
 
   openMap() {
     if (this.mapOpen) return;
     this.mapOpen = true;
     this.mapTimer = 0;
+
+    sounds.sfx["open map"].play();
   }
 
   closeMap() {
     if (!this.mapOpen) return;
     this.mapOpen = false;
     this.mapTimer = .5;
+
+    sounds.sfx["close map"].play();
   }
 
   getStationByName(name) {
@@ -382,26 +385,19 @@ class Subway {
   getShortestRoute(station1, station2) {
     let routes = this.getAllRoutes(station1, station2);
 
-    let shortestRoute = null;
+    let shortestRoutes = [];
     let shortestRouteLength = Infinity;
     for (let route of routes) {
       if (!route.route) continue;
-      if (route.length < shortestRouteLength) {
-        shortestRoute = route;
+      if (route.length <= shortestRouteLength) {
+        shortestRoutes.push(route);
         shortestRouteLength = route.length;
       }
     }
 
-    return shortestRoute;
-  }
-
-  getSimplestRoute(station1, station2) {
-    let routes = this.getAllRoutes(station1, station2);
-
-    let simplestRoute = null;
+    let simplestRoute;
     let fewestTransfers = Infinity;
-    for (let route of routes) {
-      if (!route.route) continue;
+    for (let route of shortestRoutes) {
       if (route.transfers < fewestTransfers) {
         simplestRoute = route;
         fewestTransfers = route.transfers;
@@ -411,10 +407,47 @@ class Subway {
     return simplestRoute;
   }
 
+  getSimplestRoute(station1, station2) {
+    let routes = this.getAllRoutes(station1, station2);
+
+    let simplestRoutes = [];
+    let fewestTransfers = Infinity;
+    for (let route of routes) {
+      if (!route.route) continue;
+      if (route.transfers <= fewestTransfers) {
+        simplestRoutes.push(route);
+        fewestTransfers = route.transfers;
+      }
+    }
+
+    let shortestRoute;
+    let shortestRouteLength = Infinity;
+    for (let route of simplestRoutes) {
+      if (route.length < shortestRouteLength) {
+        shortestRoute = route;
+        shortestRouteLength = route.length;
+      }
+    }
+
+    return shortestRoute;
+  }
+
   setName(name, replacement) {
     let station = this.getStationByName(name);
     station.name = replacement;
     station.nameColor = player.color.toString();
+  }
+
+  shortRoute(name1, name2) {
+    let station1 = this.getStationByName(name1);
+    let station2 = this.getStationByName(name2);
+    return this.getShortestRoute(station1, station2);
+  }
+
+  simpleRoute(name1, name2) {
+    let station1 = this.getStationByName(name1);
+    let station2 = this.getStationByName(name2);
+    return this.getSimplestRoute(station1, station2);
   }
 }
 
@@ -495,10 +528,9 @@ class Line {
     } else {
       // sort stations by distance to p1
 
-      let p1 = this.p1;
-
+      let point = this.p1.y < this.p2.y ? this.p1 : this.p2;
       this.stations.sort(function(a,b) {
-        return a.position.distanceTo(p1) > b.position.distanceTo(p1) ? 1 : -1;
+        return a.position.distanceTo(point) > b.position.distanceTo(point) ? 1 : -1;
       });
     }
   }
@@ -864,7 +896,7 @@ class Train {
         let stopped = earlier.type == "arrival";
         let elapsed = time - et;
         let t = stopped ? 0 : elapsed / (later.time - et);
-        let doors_open = elapsed >= this.line.doorTime && elapsed < (later.time - et) - this.line.doorTime;
+        let doors_open = elapsed >= this.line.doorTime && elapsed < (later.time - et) - this.line.doorTime && stopped;
 
         let door_t = 0;
         if (stopped) {

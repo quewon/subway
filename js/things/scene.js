@@ -87,8 +87,8 @@ class Scene {
 
   camera() {
     if (player && player.scene == this) {
-      let ww = window.innerWidth;
-      let wh = window.innerHeight;
+      let ww = window.innerWidth * GAME_SCALE;
+      let wh = window.innerHeight * GAME_SCALE;
       let sw = this.size.x;
       let sh = this.size.y;
       if (sw > ww) {
@@ -180,6 +180,7 @@ class StationScene extends Scene {
 
     let confiners = [];
     let doors = [];
+    let platformConfiners = [];
 
     let lineIndex = 0;
     let xEdge = 0;
@@ -221,8 +222,9 @@ class StationScene extends Scene {
       rect1.isPlatform = true;
 
       confiners.push(rect1);
-      doors.push(new Door(rect1, new Vector2(1, .5), new Vector2(0, 2.5)));
+      platformConfiners.push(rect1);
       doors.push(new Door(rect1, new Vector2(0, .5), new Vector2(0, 2.5)));
+      doors.push(new Door(rect1, new Vector2(1, .5), new Vector2(0, 2.5)));
 
       if (lineIndex+1 < station.lines.length) {
         let rect2 = new RectConfiner(
@@ -232,8 +234,9 @@ class StationScene extends Scene {
         rect2.isPlatform = true;
 
         confiners.push(rect2);
-        doors.push(new Door(rect2, new Vector2(1, .5), new Vector2(0, -2.5)));
+        platformConfiners.push(rect2);
         doors.push(new Door(rect2, new Vector2(0, .5), new Vector2(0, -2.5)));
+        doors.push(new Door(rect2, new Vector2(1, .5), new Vector2(0, -2.5)));
       }
 
       lineIndex += 2;
@@ -245,6 +248,7 @@ class StationScene extends Scene {
 
     this.tag = "station";
     this.station = station;
+    this.platformConfiners = platformConfiners;
 
     this.trainPositions = [];
 
@@ -257,11 +261,11 @@ class StationScene extends Scene {
         if (lineIndex%2==1) yo = 0;
 
         this.trainPositions.push(new Vector2(
-          confiner.position.x + confiner.size.x + line.trainSize.x/2 + 5,
+          confiner.position.x - line.trainSize.x/2 - 5,
           confiner.position.y + line.trainSize.y/2 + line.trainSize.x/2 + yo
         ));
         this.trainPositions.push(new Vector2(
-          confiner.position.x - line.trainSize.x/2 - 5,
+          confiner.position.x + confiner.size.x + line.trainSize.x/2 + 5,
           confiner.position.y + line.trainSize.y/2 + line.trainSize.x/2 + yo
         ));
 
@@ -275,7 +279,51 @@ class StationScene extends Scene {
       }
     }
 
+    this.generateFloorLines();
+
     this.trainsHere = [];
+  }
+
+  generateFloorLines() {
+    this.floorLines = [];
+
+    let lineIndex = 0;
+    for (let confiner of this.platformConfiners) {
+      let line = this.station.lines[lineIndex];
+
+      let x = confiner.position.x;
+      let y = confiner.position.y;
+      let width = confiner.size.x;
+      let height = confiner.size.y;
+
+      let padding = new Vector2(5, 15);
+
+      this.floorLines.push({
+        color: line.color.toString(),
+        p1: new Vector2(x + padding.x, y + padding.y),
+        p2: new Vector2(x + padding.x, y + height - padding.y)
+      });
+      this.floorLines.push({
+        color: line.color.toString(),
+        p1: new Vector2(x + width - padding.x, y + padding.y),
+        p2: new Vector2(x + width - padding.x, y + height - padding.y)
+      });
+
+      lineIndex++;
+    }
+  }
+
+  drawFloorLines() {
+    for (let line of this.floorLines) {
+      let p1 = line.p1;
+      let p2 = line.p2;
+
+      context.strokeStyle = line.color;
+      context.beginPath();
+      context.moveTo(p1.x, p1.y);
+      context.lineTo(p2.x, p2.y);
+      context.stroke();
+    }
   }
 
   getTrainsHere() {
@@ -350,6 +398,7 @@ class StationScene extends Scene {
     }
     this.drawTrains();
     this.drawConfiners();
+    this.drawFloorLines();
     this.drawTrainsThings();
     this.drawThings();
 
@@ -488,8 +537,8 @@ class TrainScene extends Scene {
 
     for (let confiner of confiners) {
       confiner.wallColor = train.line.color.toString();
-      doors.push(new Door(confiner, new Vector2(0, .5)));
       doors.push(new Door(confiner, new Vector2(1, .5)));
+      doors.push(new Door(confiner, new Vector2(0, .5)));
     }
 
     super(confiners, doors);
@@ -548,8 +597,8 @@ class TrainScene extends Scene {
     context.strokeStyle = color.toString();
 
     context.beginPath();
-    context.moveTo(0, - window.innerHeight);
-    context.lineTo(0, window.innerHeight);
+    context.moveTo(0, -window.innerHeight * GAME_SCALE);
+    context.lineTo(0, window.innerHeight * GAME_SCALE);
     context.stroke();
   }
 
@@ -590,6 +639,15 @@ class TrainScene extends Scene {
         this.timer = 0;
         this.jiggleOffset = new Vector2();
       } else {
+        let t = data.t;
+        if (data.t >= .75) {
+          this.jiggleAmount = lerp(1, 0, (t-.75) * 4);
+        } else if (data.t <= .25) {
+          this.jiggleAmount = lerp(0, 1, t * 4);
+        } else {
+          this.jiggleAmount = 1;
+        }
+
         this.timer += dt;
         this.jiggleOffset = new Vector2(
           Math.sin(this.jiggleSpeed * this.timer) * this.jiggleAmount,

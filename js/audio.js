@@ -2,7 +2,7 @@ var sounds = {};
 
 var soundslist = {
   "ambience": ["heathrow"],
-  "dialogue-random": 1
+  "sfx": ["close map", "open map", "read note", "train waits", "train layer 1", "train layer 2", "train layer 3"]
 }
 function load_sounds(onload) {
   console.log("loading sounds...");

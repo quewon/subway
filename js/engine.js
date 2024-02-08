@@ -17,7 +17,9 @@ function animate() {
   context.rect(-canvas.width/2, -canvas.height/2, canvas.width, canvas.height);
   context.fill();
 
-  if (subway) subway.draw();
+  if (player && subway) subway.draw();
+
+  noise();
 
   requestAnimationFrame(animate);
 }
@@ -42,14 +44,11 @@ window.onresize = function() {
   let prevWidth = canvas.width;
   let prevHeight = canvas.height;
 
-  notebook.width = canvas.width = window.innerWidth * window.devicePixelRatio;
-  notebook.height = canvas.height = window.innerHeight * window.devicePixelRatio;
+  notebook.width = canvas.width = window.innerWidth * window.devicePixelRatio * GAME_SCALE;
+  notebook.height = canvas.height = window.innerHeight * window.devicePixelRatio * GAME_SCALE;
 
-  if (canvas.width > noiseCanvas.width || canvas.height > noiseCanvas.height) {
-    if (canvas.width > noiseCanvas.width) noiseCanvas.width = canvas.width;
-    if (canvas.height > noiseCanvas.height) noiseCanvas.height = canvas.height;
-    noise();
-  }
+  noiseCanvas.width = window.innerWidth/2;
+  noiseCanvas.height = window.innerHeight/2;
 
   if (subway && subway.currentScene) {
     subway.placeNotes();

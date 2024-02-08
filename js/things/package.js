@@ -12,7 +12,8 @@ class Package extends PhysicalThing {
     this.hoverAlphaTime = 200;
     this.hover = false;
     this.active = false;
-    this.linkedToPlayer = false;
+    this.prevActive = false;
+    this.linkedToPlayer = true;
 
     //
 
@@ -66,35 +67,38 @@ class Package extends PhysicalThing {
   update(dt) {
     this.direction = new Vector2();
     this.hover = false;
-    this.active = false;
 
     if (!this.found) {
       if (player && player.scene == this.scene && player.closestPackage == this) {
         this.hover = true;
 
-        if (player.direction.sqrMagnitude() == 0) {
+        if (player.input.sqrMagnitude() == 0) {
           this.hoverTimer++;
         } else {
           this.hoverTimer = 0;
         }
 
-        if (player.interacting) {
-          this.active = true;
-          this.linkedToPlayer = true;
+        if (player.interactingThisFrame) {
+          if (this.prevActive) {
+            this.active = false;
+            sounds.sfx["read note"].play();
+            // this.linkedToPlayer = false;
+          } else {
+            this.active = true;
+            sounds.sfx["read note"].play();
+            // this.linkedToPlayer = true;
+          }
         }
       } else {
         this.hoverTimer = 0;
+        this.active = false;
       }
 
-      if (player && !player.interacting) {
-        this.linkedToPlayer = false;
-      }
-
-      if (this.linkedToPlayer) {
+      if (player && this.linkedToPlayer) {
         if (this.scene != player.scene) {
           this.exit(this.scene);
           this.enter(player.scene);
-          this.position = this.relativePosition.add(player.position);
+          this.position = player.position.add(new Vector2(-player.direction.x * 10, 0));
           this.previousConfiner = player.previousConfiner;
         }
         if (!circleRect(player.position, player.radius + player.avoidanceRadius, this.position, this.size)) {
@@ -107,11 +111,13 @@ class Package extends PhysicalThing {
 
     if (this.found) {
       this.position = this.position.lerp(this.recipient.position, dt/1000);
-      if (this.position.add(this.size.div(2)).distanceTo(this.recipient.position) <= this.recipient.radius) {
+      if (this.position.add(this.size.div(2)).distanceTo(this.recipient.position) <= this.recipient.radius + this.recipient.avoidanceRadius) {
         this.exit();
         this.recipient.fulfillDelivery();
       }
     }
+
+    this.prevActive = this.active;
   }
 
   followPlayer(dt) {
@@ -122,8 +128,6 @@ class Package extends PhysicalThing {
     let direction = player.position.sub(position).normalize();
 
     this.direction = direction.mul(distance * dt/400);
-
-    this.relativePosition = player.position.sub(this.position.sub);
   }
 
   draw() {
@@ -143,7 +147,9 @@ class Package extends PhysicalThing {
   drawUI() {
     if (this.active) {
       this.drawInfo();
-    } else if (this.hover) {
+    }
+
+    if (this.hover) {
       context.globalAlpha = Math.max(0, (this.hoverAlphaTime-this.hoverTimer)/this.hoverAlphaTime);
 
       context.fillStyle = LINES_COLOR;
@@ -195,7 +201,7 @@ class Package extends PhysicalThing {
 
     y += this.lineHeight;
 
-    let stationName = this.recipient.scene.station.name;
+    let stationName = this.recipient.home.name;
     stationName = stationName[0].toUpperCase() + stationName.substring(1);
     context.fillText("@ "+stationName+" Station", x, y);
   }
@@ -204,6 +210,10 @@ class Package extends PhysicalThing {
 class Recipient extends Passenger {
   constructor(p) {
     super(p);
+  }
+
+  setDestination() {
+    this.destination = this.home;
   }
 
   avoidPhysicalThings() {

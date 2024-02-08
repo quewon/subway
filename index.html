@@ -36,6 +36,8 @@
   <script type="text/javascript" src="js/things/package.js"></script>
   <script type="text/javascript" src="js/things/scene.js"></script>
   <script type="text/javascript">
+    var GAME_SCALE = 1/1.1;
+
     // let gradient = context.createLinearGradient(-300, -600, 300, 600);
     var GRADIENT;
 
@@ -65,6 +67,8 @@
     });
 
     function init() {
+      console.clear();
+
       window.onresize();
 
       //
@@ -81,7 +85,6 @@
 
       for (let station of subway.stations) {
         for (let i=0; i<station.lines.length * 2; i++) {
-        // for (let i=0; i<1; i++) {
           let groupsize = Math.ceil(Math.random() * 5);
 
           if (groupsize == 1) {
@@ -102,6 +105,7 @@
 
       //
 
+      animate();
       update();
       document.getElementById("playprompt").textContent = "click to begin";
       document.onmousedown = document.oncontextmenu = function(e) {
@@ -120,13 +124,13 @@
         label: "you",
         position: new Vector2(0, 200)
       });
-      player.visualOffset = new Vector2();
       player.update = function(dt) {
         let input = new Vector2();
         if (keysdown["KeyW"] || keysdown["ArrowUp"]) input.y--;
         if (keysdown["KeyA"] || keysdown["ArrowLeft"]) input.x--;
         if (keysdown["KeyS"] || keysdown["ArrowDown"]) input.y++;
         if (keysdown["KeyD"] || keysdown["ArrowRight"]) input.x++;
+        this.input = input;
         this.direction = input.normalize();
 
         if (!this.unpushable && this.avoidanceRadius > 0) {
@@ -138,7 +142,13 @@
 
         this.move(dt);
 
+        let prevInteracting = this.interacting;
         this.interacting = keysdown["Space"];
+        if (!prevInteracting && this.interacting) {
+          this.interactingThisFrame = true;
+        } else {
+          this.interactingThisFrame = false;
+        }
 
         this.closestPackage = null;
         let closestPackageDistance = Infinity;
@@ -164,8 +174,6 @@
       document.getElementById("playprompt").classList.add("gone");
 
       init_inputs();
-
-      animate();
 
       // sounds["dialogue-random"][0].play();
 
