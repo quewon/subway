@@ -117,7 +117,7 @@ class RectConfiner {
 
       if (collidedDoor) {
         let direction = -collidedDoor.relativePosition.x;
-        if (Math.sign(player.velocity.x) == Math.sign(direction)) {
+        if (Math.sign(thing.direction.x) == Math.sign(direction)) {
           thing.moveToLinkedScene();
           thing.previousConfiner = this;
         }
@@ -258,13 +258,13 @@ class Door {
 
       let collides = circleRect(passenger.position.add(offset), passenger.radius, this.relativePosition.add(this.confiner.position), this.size);
 
-      if (this.linkedScene && passenger.linkedScene != this.scene) {
+      if (this.linkedScene && passenger.linkedScene != this.linkedScene) {
         passenger.linkToScene(this.linkedScene, this, this.linkOffset);
       }
 
       return circleRect(passenger.position.add(offset), passenger.radius, this.relativePosition.add(this.confiner.position), this.size);
     } else {
-      if (this.linkedScene && thing.linkedScene != this.scene) {
+      if (this.linkedScene && thing.linkedScene != this.linkedScene) {
         thing.linkToScene(this.linkedScene, this, this.linkOffset);
       }
 

@@ -262,7 +262,9 @@ class Interactable extends Thing {
     } else {
       context.stroke();
     }
+  }
 
+  drawUI() {
     if (player && player.scene == this.scene && this.hoveringPassengers.indexOf(player) != -1) {
       context.fillStyle = LINES_COLOR;
       context.font = "13px sans-serif";

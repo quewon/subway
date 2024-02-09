@@ -453,9 +453,105 @@ class StationScene extends Scene {
     }
   }
 
+  drawPlatformInfo(platform, line, direction) {
+    let this_stop = this.station;
+    let index = line.stations.indexOf(this_stop);
+    let prev_stop;
+    let next_stop;
+
+    if (line.type == "line") {
+      if (index + direction < line.stations.length && index + direction >= 0) next_stop = line.stations[index + direction];
+      if (index - direction < line.stations.length && index - direction >= 0) prev_stop = line.stations[index - direction];
+    } else if (line.type == "circle") {
+      if (direction > 0) {
+        prev_stop = line.stations[index+direction] || line.stations[0];
+        next_stop = line.stations[index-direction] || line.stations[line.stations.length-1];
+      } else {
+        next_stop = line.stations[index-direction] || line.stations[0];
+        prev_stop = line.stations[index+direction] || line.stations[line.stations.length-1];
+      }
+    }
+
+    context.font = "13px monospace";
+    context.textAlign = "left";
+    context.textBaseline = "top";
+
+    let padding = new Vector2(5, 5);
+    let arrow = "→";
+
+    let string1 = this_stop.name.toUpperCase();
+    if (prev_stop) string1 = prev_stop.name+" "+arrow+" "+string1;
+    let string2 = "";
+    if (next_stop) {
+      string1 += " "+arrow+" ";
+      string2 = next_stop.name;
+    }
+
+    let measurement = context.measureText(string1+string2);
+    let width = padding.x * 2 + measurement.width;
+    let height = padding.y * 2 + measurement.fontBoundingBoxDescent;
+    let px = platform.position.x + platform.size.x/2 + direction * (platform.size.x/2 + 20);
+    if (direction < 0) px -= width;
+    let py = platform.position.y + platform.size.y/2 - height/2;
+
+    context.strokeStyle = new RGBA(0,0,0,.3).toString();
+    context.setLineDash([2]);
+    context.beginPath();
+    context.moveTo(direction > 0 ? platform.position.x + platform.size.x : platform.position.x, py + height/2);
+    context.lineTo(px, py + height/2);
+    context.stroke();
+    context.setLineDash([]);
+
+    context.strokeStyle = LINES_COLOR;
+    context.fillStyle = BACKGROUND_COLOR;
+    context.beginPath();
+    context.rect(px, py, width, height);
+    context.fill();
+    context.stroke();
+
+    context.fillStyle = LINES_COLOR;
+    context.fillText(string1, px + padding.x, py + padding.y);
+    let width1 = context.measureText(string1).width;
+
+    context.fillStyle = line.color.toString();
+    context.fillText(string2, px + padding.x + width1, py + padding.y);
+
+    // context.save();
+    // context.translate(platform.position.x + platform.size.x/2 + direction * (platform.size.x/2 + height), platform.position.y + platform.size.y/2);
+    // context.rotate(Math.PI/2 * direction);
+    //
+    // let x;
+    // if (direction > 0) {
+    //   x = -width/2;
+    //   if (x + width > platform.size.y - 5) {
+    //     x = platform.position.y/2 - width - 5;
+    //   }
+    // } else {
+    //   x = Math.max(-width/2, -platform.size.y/2 + 5);
+    // }
+    //
+    // context.fillStyle = LINES_COLOR;
+    // context.fillText(string1, x, 0);
+    // context.fillStyle = line.color.toString();
+    // context.fillText(string2, x + width1, 0);
+    //
+    // context.restore();
+  }
+
   drawUI() {
     for (let thing of this.things) {
       thing.drawUI();
+    }
+
+    if (subway.currentScene == this) {
+      for (let i=0; i<this.platformConfiners.length; i++) {
+        let platform = this.platformConfiners[i];
+        if (platform.thingConfined(player)) {
+          let line = this.station.lines[i];
+          this.drawPlatformInfo(platform, line, 1);
+          this.drawPlatformInfo(platform, line, -1);
+        }
+      }
     }
 
     for (let info of this.trainsHere) {

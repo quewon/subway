@@ -126,8 +126,8 @@
       });
       player.update = function(dt) {
         let input = new Vector2();
-        if (keysdown["KeyW"] || keysdown["ArrowUp"]) input.y--;
-        if (keysdown["KeyA"] || keysdown["ArrowLeft"]) input.x--;
+        if (keysdown["KeyW"] || keysdown["KeyZ"] || keysdown["ArrowUp"]) input.y--;
+        if (keysdown["KeyA"] || keysdown["KeyQ"] || keysdown["ArrowLeft"]) input.x--;
         if (keysdown["KeyS"] || keysdown["ArrowDown"]) input.y++;
         if (keysdown["KeyD"] || keysdown["ArrowRight"]) input.x++;
         this.input = input;
