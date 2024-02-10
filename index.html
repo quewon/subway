@@ -10,9 +10,7 @@
 
     <canvas id="game"></canvas>
     <canvas id="notebook"></canvas>
-
-    <!-- <img src="assets/imgs/bg.png" alt=""> -->
-
+    
     <div id="playprompt">loading...</div>
 
     <div id="lighten"></div>
@@ -122,7 +120,8 @@
         avoidanceRadius: 20,
         fill: true,
         label: "you",
-        position: new Vector2(0, 200)
+        position: new Vector2(0, 200),
+        // image: images.player.player
       });
       player.update = function(dt) {
         let input = new Vector2();

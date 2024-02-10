@@ -71,6 +71,6 @@ body.dark #dark {
 }
 
 img {
-  /* mix-blend-mode: color-burn; */
-  opacity: .3;
+  mix-blend-mode: multiply;
+  opacity: .2;
 }

@@ -20,11 +20,14 @@ class Passenger extends PhysicalThing {
     }
 
     this.routePreference = Math.random() > .5 ? "simple" : "short";
+    this.aimForHallCenter = true;
 
     this.home = this.scene.station;
     this.isTraveling = p.isTraveling != null ? p.isTraveling : true;
 
     this.interacting = false;
+
+    // this.image = p.image || images.passengers[images.passengers.length * Math.random() | 0];
   }
 
   setDestination() {
@@ -92,9 +95,6 @@ class Passenger extends PhysicalThing {
   drawSelf() {
     let color = new RGBA(this.colorOrigin);
 
-    context.beginPath();
-    context.arc(this.position.x, this.position.y, this.radius, 0, Math.PI * 2);
-
     if (this.collisionsCounter > 0) {
       this.collisionsCounter--;
 
@@ -104,12 +104,15 @@ class Passenger extends PhysicalThing {
     }
 
     context.fillStyle = color.toString();
+    context.beginPath();
+    context.arc(this.position.x, this.position.y, this.radius, 0, Math.PI * 2);
     if (this.fill) {
       context.fill();
     } else {
-      context.strokeStyle = color.toString();
+      context.strokeStyle = context.fillStyle;
       context.stroke();
     }
+    // context.drawImage(this.image, this.position.x - this.image.width/2, this.position.y - this.image.height/2);
 
     if (this.label) {
       context.font = "13px sans-serif";
@@ -379,27 +382,63 @@ class Passenger extends PhysicalThing {
               return desiredPosition.sub(this.position).normalize().mul(.5);
             }
           }
-        } else if (this.scene.tag == "station") {
+        } else if (this.scene.tag == "station" && this.previousConfiner) {
           let line = route[0].line;
           let station = this.scene.station;
           let lineIndex = station.lines.indexOf(line);
           let platform = this.scene.platformConfiners[lineIndex];
 
-          let inPlatform = this.scene.platformConfiners.indexOf(this.previousConfiner) != -1;
+          let inPlatform = this.previousConfiner.isPlatform;
 
           if (inPlatform && this.previousConfiner != platform) {
             // in a different platform
 
-            if (this.position > 0) {
-              desiredDirection = new Vector2(0, -1);
+            this.aimForHallCenter = true;
+
+            if (this.position.y > 0) {
+              return new Vector2(0, -1);
             } else {
-              desiredDirection = new Vector2(0, 1);
+              return new Vector2(0, 1);
             }
           } else if (!inPlatform) {
-            // in hall
+            let hall = this.previousConfiner;
 
-            let platformCenter = platform.position.add(platform.size.div(2));
-            desiredDirection = platformCenter.sub(this.position).jiggle(1);
+            if (hall.isHall) {
+              let hall = this.previousConfiner;
+              let hallCenter = hall.position;
+              if (this.aimForHallCenter) {
+                let hallRadius;
+                if (hall.radius) {
+                  hallRadius = hall.radius;
+                } else {
+                  hallRadius = Math.min(hall.size.y/2, hall.size.x/2);
+                  hallCenter = hall.position.add(hall.size.div(2));
+                }
+
+                if (this.position.distanceTo(hallCenter) <= hallRadius/2) {
+                  this.aimForHallCenter = false;
+                }
+
+                desiredDirection = hallCenter.sub(this.position);
+              } else {
+                let platformCenter = platform.position.add(platform.size.div(2));
+                let distance = platformCenter.sub(this.position);
+
+                if (Math.abs(distance.x) > platform.size.x) {
+                  desiredDirection = new Vector2(distance.x, hallCenter.y - this.position.y);
+                } else {
+                  desiredDirection = distance;
+                }
+              }
+            } else {
+              // bridge
+
+              let platformCenter = platform.position.add(platform.size.div(2));
+              desiredDirection = platformCenter.sub(this.position);
+              desiredDirection = new Vector2(desiredDirection.x, 0);
+
+              this.aimForHallCenter = true;
+            }
           } else {
             // in the right platform
 
@@ -431,12 +470,6 @@ class Passenger extends PhysicalThing {
               return desiredPosition.sub(this.position).normalize().mul(.5);
             }
           }
-
-          // which door ?
-          // pathfinding to door
-
-          // if the door's open, i wanna enter
-          // if not, wander around it ..? or stop in front of it
         }
       }
     }

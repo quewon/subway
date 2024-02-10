@@ -279,8 +279,6 @@ class StationScene extends Scene {
       }
     }
 
-    this.generateFloorLines();
-
     this.trainsHere = [];
   }
 
@@ -307,6 +305,26 @@ class StationScene extends Scene {
         color: line.color.toString(),
         p1: new Vector2(x + width - padding.x, y + padding.y),
         p2: new Vector2(x + width - padding.x, y + height - padding.y)
+      });
+
+      //
+
+      let oy = height/3.5;
+      if (lineIndex % 2 == 0) {
+        oy *= -1;
+      }
+
+      new TrainTracker({
+        scene: this,
+        line: line,
+        position: new Vector2(x + width - 9, y + height/2 + oy),
+        direction: 1
+      });
+      new TrainTracker({
+        scene: this,
+        line: line,
+        position: new Vector2(x + 9, y + height/2 + oy),
+        direction: -1
       });
 
       lineIndex++;
@@ -402,6 +420,17 @@ class StationScene extends Scene {
     this.drawTrainsThings();
     this.drawThings();
 
+    if (subway.currentScene == this) {
+      for (let i=0; i<this.platformConfiners.length; i++) {
+        let platform = this.platformConfiners[i];
+        if (platform.thingConfined(player)) {
+          let line = this.station.lines[i];
+          this.drawPlatformInfo(platform, line, 1);
+          this.drawPlatformInfo(platform, line, -1);
+        }
+      }
+    }
+
     this.drawUI();
   }
 
@@ -455,22 +484,8 @@ class StationScene extends Scene {
 
   drawPlatformInfo(platform, line, direction) {
     let this_stop = this.station;
-    let index = line.stations.indexOf(this_stop);
-    let prev_stop;
-    let next_stop;
-
-    if (line.type == "line") {
-      if (index + direction < line.stations.length && index + direction >= 0) next_stop = line.stations[index + direction];
-      if (index - direction < line.stations.length && index - direction >= 0) prev_stop = line.stations[index - direction];
-    } else if (line.type == "circle") {
-      if (direction > 0) {
-        prev_stop = line.stations[index+direction] || line.stations[0];
-        next_stop = line.stations[index-direction] || line.stations[line.stations.length-1];
-      } else {
-        next_stop = line.stations[index-direction] || line.stations[0];
-        prev_stop = line.stations[index+direction] || line.stations[line.stations.length-1];
-      }
-    }
+    let prev_stop = line.getPreviousStop(this_stop, direction);
+    let next_stop = line.getNextStop(this_stop, direction);
 
     context.font = "13px monospace";
     context.textAlign = "left";
@@ -541,17 +556,6 @@ class StationScene extends Scene {
   drawUI() {
     for (let thing of this.things) {
       thing.drawUI();
-    }
-
-    if (subway.currentScene == this) {
-      for (let i=0; i<this.platformConfiners.length; i++) {
-        let platform = this.platformConfiners[i];
-        if (platform.thingConfined(player)) {
-          let line = this.station.lines[i];
-          this.drawPlatformInfo(platform, line, 1);
-          this.drawPlatformInfo(platform, line, -1);
-        }
-      }
     }
 
     for (let info of this.trainsHere) {

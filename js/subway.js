@@ -19,8 +19,8 @@ class Subway {
     this.mapOpen = false;
     this.mapTimer = 0;
 
-    // this.homebase = this.getLargestStation().scene;
-    this.homebase = this.lines[0].stations[0].scene;
+    this.homebase = this.getLargestStation().scene;
+    // this.homebase = this.lines[0].stations[0].scene;
     this.currentScene = this.homebase;
   }
 
@@ -188,6 +188,10 @@ class Subway {
         }
       }
     }
+
+    for (let station of this.stations) {
+      station.scene.generateFloorLines();
+    }
   }
 
   generateTrains() {
@@ -305,16 +309,10 @@ class Subway {
     let hours = Math.floor(this.time / 60 / 60);
     let minutes = Math.floor(this.time / 60 % 60);
     if (minutes < 10) minutes = "0"+minutes;
-    let seconds = Math.floor(this.time % 60 % 60);
-    if (seconds < 10) seconds = "0"+seconds;
-    return hours+":"+minutes+":"+seconds;
-  }
-
-  drawTime() {
-    context.fillStyle = LINES_COLOR;
-    context.textAlign = "center";
-    context.textBaseline = "middle";
-    context.fillText(this.getTimeString(), 0, -(window.innerHeight * GAME_SCALE)/3);
+    // let seconds = Math.floor(this.time % 60 % 60);
+    // if (seconds < 10) seconds = "0"+seconds;
+    // return hours+":"+minutes+":"+seconds;
+    return hours+":"+minutes;
   }
 
   openMap() {
@@ -717,6 +715,40 @@ class Line {
     }
 
     return shortestRoute;
+  }
+
+  getPreviousStop(station, direction) {
+    let index = this.stations.indexOf(station);
+
+    if (this.type == "line") {
+      if (index - direction < this.stations.length && index - direction >= 0)
+        return this.stations[index - direction];
+    } else if (this.type == "circle") {
+      if (direction > 0) {
+        return this.stations[index+direction] || this.stations[0];
+      } else {
+        return this.stations[index+direction] || this.stations[this.stations.length-1];
+      }
+    }
+
+    return null;
+  }
+
+  getNextStop(station, direction) {
+    let index = this.stations.indexOf(station);
+
+    if (this.type == "line") {
+      if (index + direction < this.stations.length && index + direction >= 0)
+        return this.stations[index + direction];
+    } else if (this.type == "circle") {
+      if (direction > 0) {
+        return this.stations[index-direction] || this.stations[this.stations.length-1];
+      } else {
+        return this.stations[index-direction] || this.stations[0];
+      }
+    }
+
+    return null;
   }
 }
 

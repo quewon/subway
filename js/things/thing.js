@@ -147,6 +147,10 @@ class PhysicalThing extends Thing {
             distance = center.distanceTo(rc);
             radii = Math.max(halfsize.x, halfsize.y) + radius;
             colliding = true;
+
+            if (this.package && thing == this.package) {
+              this.fulfillDelivery();
+            }
           }
         }
       } else {
@@ -237,6 +241,7 @@ class Interactable extends Thing {
     p = p || {};
 
     this.tag = "interactable";
+    this.promptText = "interact";
 
     this.color = new RGBA(255, 230, 0, 1);
     this.size = p.size || new Vector2(10, 10);
@@ -244,6 +249,7 @@ class Interactable extends Thing {
 
     this.hover = false;
     this.active = false;
+    this.toggled = false;
     this.hoveringPassengers = [];
     this.interactingPassengers = [];
   }
@@ -257,26 +263,37 @@ class Interactable extends Thing {
     context.fillStyle = context.strokeStyle = this.color.toString();
     context.beginPath();
     context.rect(this.position.x, this.position.y, this.size.x, this.size.y);
-    if (this.active) {
+    if (this.toggled) {
       context.fill();
     } else {
       context.stroke();
     }
   }
 
-  drawUI() {
+  drawPrompt() {
     if (player && player.scene == this.scene && this.hoveringPassengers.indexOf(player) != -1) {
       context.fillStyle = LINES_COLOR;
       context.font = "13px sans-serif";
       context.textAlign = "center";
       context.textBaseline = "bottom";
-      context.fillText("[space] map", this.position.x + this.size.x/2, this.position.y);
+
+      context.strokeStyle = BACKGROUND_COLOR;
+      context.lineWidth = 3;
+      context.strokeText("[space] "+this.promptText, this.position.x + this.size.x/2, this.position.y);
+      context.lineWidth = 1;
+
+      context.fillText("[space] "+this.promptText, this.position.x + this.size.x/2, this.position.y);
     }
+  }
+
+  drawUI() {
+    this.drawPrompt();
   }
 
   update(dt) {
     this.hover = false;
     this.active = false;
+
     for (let passenger of this.scene.things) {
       if (passenger.tag != "passenger") continue;
 
@@ -297,6 +314,7 @@ class Interactable extends Thing {
           if (interactIndex == -1) {
             this.interactingPassengers.push(passenger);
             this.oninteract(passenger);
+            this.toggled = !this.toggled;
           }
         } else if (interactIndex != -1) {
           this.interactingPassengers.splice(interactIndex, 1);
@@ -305,6 +323,7 @@ class Interactable extends Thing {
       } else if (index != -1) {
         this.hoveringPassengers.splice(index, 1);
         this.onleave(passenger);
+        this.toggled = false;
 
         let interactIndex = this.interactingPassengers.indexOf(passenger);
         if (interactIndex != -1) {
@@ -327,6 +346,8 @@ class Map extends Interactable {
     p.size = new Vector2(30, 30);
 
     super(p);
+
+    this.promptText = "map";
   }
 
   draw() {
@@ -352,6 +373,109 @@ class Map extends Interactable {
   onleave(passenger) {
     if (passenger == player && subway.mapOpen) {
       subway.closeMap();
+      passenger.unpushable = false;
+    }
+  }
+}
+
+class TrainTracker extends Interactable {
+  constructor(p) {
+    p = p || {};
+    p.size = new Vector2(18, 20);
+    super(p);
+
+    this.line = p.line;
+    this.direction = p.direction;
+    this.trackerOpen = false;
+
+    this.promptText = "track";
+
+    //
+
+    this.this_stop = this.scene.station;
+    this.prev_stop = this.line.getPreviousStop(this.this_stop, this.direction);
+    this.next_stop = this.line.getNextStop(this.this_stop, this.direction);
+    this.stops = [
+      this.prev_stop,
+      this.this_stop,
+      this.next_stop
+    ];
+
+    let names = [this.this_stop.name];
+    if (this.prev_stop) names.push(this.prev_stop.name);
+    if (this.next_stop) names.push(this.next_stop.name);
+
+    let longestName;
+    let longestNameLength = 0;
+    for (let name of names) {
+      if (name.length > longestNameLength) {
+        longestName = name;
+        longestNameLength = name.length;
+      }
+    }
+    this.longestName = longestName;
+  }
+
+  draw() {
+    this.drawBox();
+  }
+
+  drawUI() {
+    this.drawPrompt();
+    if (this.trackerOpen) this.drawTracker();
+  }
+
+  drawTracker() {
+    context.font = "13px monospace";
+    context.textAlign = "center";
+    context.textBaseline = "top";
+
+    let measurement = context.measureText(this.longestName);
+    let textWidth = measurement.width + 20;
+    let textHeight = measurement.fontBoundingBoxDescent;
+
+    let width = textWidth * 3;
+    let height = textHeight * 7;
+
+    context.beginPath();
+    context.rect(-width/2, -height/2, width, height);
+    context.fillStyle = LINES_COLOR;
+    context.fill();
+
+    context.fillStyle = BACKGROUND_COLOR;
+
+    let y = -height/2 + textHeight * 5;
+    for (let i=0; i<this.stops.length; i++) {
+      let station = this.stops[i];
+      if (station) {
+        let x = -width/2 + textWidth * i + textWidth/2;
+        context.fillText(station.name, x, y);
+
+        context.beginPath();
+        context.arc(x, y-5, 3, 0, Math.PI*2);
+        context.fill();
+      }
+    }
+
+    context.strokeStyle = BACKGROUND_COLOR;
+    context.beginPath();
+    context.moveTo(-width/2 + 10, y-5);
+    context.lineTo(width/2 - 10, y-5);
+    context.stroke();
+
+    context.fillText(subway.getTimeString(), 0, -height/2 + textHeight);
+  }
+
+  oninteract(passenger) {
+    if (passenger == player) {
+      this.trackerOpen = !this.trackerOpen;
+      passenger.unpushable = this.trackerOpen;
+    }
+  }
+
+  onleave(passenger) {
+    if (passenger == player && this.trackerOpen) {
+      this.trackerOpen = false;
       passenger.unpushable = false;
     }
   }

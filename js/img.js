@@ -2,8 +2,10 @@ var images = {};
 
 var svgslist = {
   dots: 38,
+  passengers: 10,
   tutorial: ["notes"],
-  map: ["star"]
+  map: ["star"],
+  player: ["player"]
 };
 
 function load_images(onload) {

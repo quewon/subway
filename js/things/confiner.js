@@ -109,7 +109,7 @@ class RectConfiner {
     if (thing.linkedScene && thing.linkedScene == this.scene) {
       let collidedDoor;
       for (let door of this.doors) {
-        if (door.thingCollides(thing, thing.linkOffset)) {
+        if (door.thingJustCollides(thing, thing.linkOffset)) {
           collidedDoor = door;
           break;
         }
@@ -250,26 +250,26 @@ class Door {
     this.linkOffset = offset;
   }
 
-  thingCollides(thing, offset) {
+  thingJustCollides(thing, offset) {
     offset = offset || new Vector2();
 
     if (thing.radius) {
       let passenger = thing;
-
-      let collides = circleRect(passenger.position.add(offset), passenger.radius, this.relativePosition.add(this.confiner.position), this.size);
-
-      if (this.linkedScene && passenger.linkedScene != this.linkedScene) {
-        passenger.linkToScene(this.linkedScene, this, this.linkOffset);
-      }
-
       return circleRect(passenger.position.add(offset), passenger.radius, this.relativePosition.add(this.confiner.position), this.size);
     } else {
-      if (this.linkedScene && thing.linkedScene != this.linkedScene) {
-        thing.linkToScene(this.linkedScene, this, this.linkOffset);
-      }
-
       return rectRect(thing.position.add(offset), thing.size, this.relativePosition.add(this.confiner.position), this.size);
     }
+  }
+
+  thingCollides(thing, offset) {
+    offset = offset || new Vector2();
+
+    let collides = this.thingJustCollides(thing, offset);
+    if (collides && this.linkedScene) {
+      thing.linkToScene(this.linkedScene, this, this.linkOffset);
+    }
+
+    return collides;
   }
 
   draw() {
