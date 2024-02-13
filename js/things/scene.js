@@ -537,27 +537,6 @@ class StationScene extends Scene {
 
     context.fillStyle = line.color.toString();
     context.fillText(string3, px + padding.x + width1 + width2, py + padding.y);
-
-    // context.save();
-    // context.translate(platform.position.x + platform.size.x/2 + direction * (platform.size.x/2 + height), platform.position.y + platform.size.y/2);
-    // context.rotate(Math.PI/2 * direction);
-    //
-    // let x;
-    // if (direction > 0) {
-    //   x = -width/2;
-    //   if (x + width > platform.size.y - 5) {
-    //     x = platform.position.y/2 - width - 5;
-    //   }
-    // } else {
-    //   x = Math.max(-width/2, -platform.size.y/2 + 5);
-    // }
-    //
-    // context.fillStyle = LINES_COLOR;
-    // context.fillText(string1, x, 0);
-    // context.fillStyle = line.color.toString();
-    // context.fillText(string2, x + width1, 0);
-    //
-    // context.restore();
   }
 
   drawUI() {
@@ -633,6 +612,144 @@ class StationScene extends Scene {
       context.translate(offset.x, offset.y);
       info.scene.drawThings();
       context.restore();
+    }
+  }
+}
+
+class OgygiaScene extends StationScene {
+  constructor(ogygia) {
+    super(ogygia);
+
+    for (let confiner of this.confiners) {
+      confiner.wallColor = new RGBA(200,210,230).toString();
+    }
+  }
+
+  getTrainsHere() {
+    this.trainsHere = [];
+    let lines = this.station.lines;
+    let lineIndex = 0;
+    for (let line of lines) {
+      for (let train of line.trains) {
+        let data = train.currentData;
+        if (!data) continue;
+        if (
+          !data.prev_stop && !data.stopped ||
+          !data.this_stop
+        ) {
+          let trainIndex = lineIndex * 2;
+          if (data.direction > 0) {
+            trainIndex++;
+          }
+
+          let offset = new Vector2();
+          if (!data.stopped) {
+            let t = data.t;
+
+            if (!data.this_stop) {
+              t -= 1;
+            }
+
+            let totalDistance = train.line.subway.stationSpacing;
+
+            let traveled = lerp(0, totalDistance, t);
+
+            const worldScale = 70;
+
+            offset.y = data.direction * traveled * worldScale;
+          }
+          offset = offset.add(this.trainPositions[trainIndex]);
+
+          train.scene.anticipatedStationOffset = offset;
+
+          this.trainsHere.push({
+            scene: train.scene,
+            position: offset,
+            data: data,
+            index: trainIndex
+          });
+        }
+      }
+      lineIndex++;
+    }
+  }
+
+  drawPlatformInfo(platform, line, direction) {
+    let stop;
+    if (direction > 0) {
+      stop = line.stations[0];
+    } else {
+      stop = line.stations[line.stations.length - 1];
+    }
+
+    context.font = "13px sans-serif";
+    context.textAlign = "left";
+    context.textBaseline = "top";
+
+    let padding = new Vector2(5, 5);
+    let string1 = "→ ";
+    let string2 = stop.name;
+
+    let width1 = context.measureText(string1).width;
+    context.font = "bold 13px sans-serif";
+    let width2 = context.measureText(string2).width;
+    let width = padding.x * 2 + width1 + width2;
+    let height = padding.y * 2 + context.measureText(string1).fontBoundingBoxDescent;
+    let px = platform.position.x + platform.size.x/2 + direction * (platform.size.x/2 + 20);
+    if (direction < 0) px -= width;
+    let py = platform.position.y + platform.size.y/2 - height/2;
+
+    context.strokeStyle = new RGBA(0,0,0,.3).toString();
+    context.setLineDash([2]);
+    context.beginPath();
+    context.moveTo(direction > 0 ? platform.position.x + platform.size.x : platform.position.x, py + height/2);
+    context.lineTo(px, py + height/2);
+    context.stroke();
+    context.setLineDash([]);
+
+    context.strokeStyle = LINES_COLOR;
+    context.fillStyle = BACKGROUND_COLOR;
+    context.beginPath();
+    context.rect(px, py, width, height);
+    context.fill();
+    context.stroke();
+
+    context.font = "13px sans-serif";
+    context.fillStyle = LINES_COLOR;
+    context.fillText(string1, px + padding.x, py + padding.y);
+
+    context.font = "bold 13px sans-serif";
+    context.fillStyle = line.color.toString();
+    context.fillText(string2, px + padding.x + width1, py + padding.y);
+  }
+
+  drawName() {
+    subway.drawStationInfo("this stop is", "station?");
+  }
+
+  updateDoors(dt) {
+    for (let info of this.trainsHere) {
+      let data = info.data;
+      if (data.stopped && !data.this_stop) {
+        let index = info.index;
+
+        if (data.doors_open) {
+          info.scene.openDoor(index % 2);
+          this.openDoor(index);
+
+          this.doors[index].linkToScene(info.scene, info.position.mul(-1));
+          info.scene.doors[index%2].linkToScene(this, info.position);
+
+          info.scene.linkToScene(this, info.position);
+        } else {
+          info.scene.closeDoors();
+          this.closeDoor(index);
+          info.scene.unlink();
+          for (let thing of this.things) {
+            if (thing.linkedScene == info.scene) thing.unlink();
+          }
+        }
+      }
     }
   }
 }

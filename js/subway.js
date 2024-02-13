@@ -24,6 +24,7 @@ class Subway {
     // this.homebase = this.getLargestStation().scene;
     this.homebase = this.lines[0].trains[0].scene;
     // this.homebase = this.lines[0].stations[0].scene;
+    // this.homebase = this.lines[0].ogygia.scene;
     this.currentScene = this.homebase;
   }
 
@@ -196,6 +197,9 @@ class Subway {
     for (let station of this.stations) {
       station.scene.generateFloorLines();
     }
+    for (let line of this.lines) {
+      line.ogygia.scene.generateFloorLines();
+    }
   }
 
   generateTrains() {
@@ -243,6 +247,7 @@ class Subway {
       station.scene.update(dt);
     }
     for (let line of this.lines) {
+      line.ogygia.scene.update(dt);
       for (let train of line.trains) {
         train.scene.update(dt);
       }
@@ -530,6 +535,8 @@ class Line {
         return a.position.distanceTo(point) > b.position.distanceTo(point) ? 1 : -1;
       });
     }
+
+    this.ogygia = new Ogygia(this);
   }
 
   generateSegments() {
@@ -1033,5 +1040,14 @@ class Station {
     }
 
     return sharedLines;
+  }
+}
+
+class Ogygia {
+  constructor(line) {
+    this.subway = line.subway;
+    this.lines = [line];
+    this.name = "";
+    this.scene = new OgygiaScene(this);
   }
 }

@@ -158,7 +158,7 @@ class LineMap extends Interactable {
     p.size = new Vector2(30, 20);
     super(p);
     this.line = p.line;
-    this.color = new RGBA(255, 150, 150, 1);
+    this.color = this.line.color;
     this.position = new Vector2(0, -this.scene.confiners[0].size.y/2).sub(this.size.div(2));
     this.promptText = "map";
     this.iconImage = images.map.star;
