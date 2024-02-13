@@ -317,13 +317,13 @@ class StationScene extends Scene {
       new TrainTracker({
         scene: this,
         line: line,
-        position: new Vector2(x + width - 9, y + height/2 + oy),
+        position: new Vector2(x + width - 14, y + height/2 - oy),
         direction: 1
       });
       new TrainTracker({
         scene: this,
         line: line,
-        position: new Vector2(x + 9, y + height/2 + oy),
+        position: new Vector2(x + 14, y + height/2 - oy),
         direction: -1
       });
 
@@ -487,24 +487,28 @@ class StationScene extends Scene {
     let prev_stop = line.getPreviousStop(this_stop, direction);
     let next_stop = line.getNextStop(this_stop, direction);
 
-    context.font = "13px monospace";
+    context.font = "13px sans-serif";
     context.textAlign = "left";
     context.textBaseline = "top";
 
     let padding = new Vector2(5, 5);
     let arrow = "→";
 
-    let string1 = this_stop.name.toUpperCase();
-    if (prev_stop) string1 = prev_stop.name+" "+arrow+" "+string1;
-    let string2 = "";
+    let string1 = "";
+    let string2 = this_stop.name;
+    if (prev_stop) string1 = prev_stop.name+" "+arrow+" ";
+    let string3 = "";
     if (next_stop) {
-      string1 += " "+arrow+" ";
-      string2 = next_stop.name;
+      string2 += " "+arrow+" ";
+      string3 = next_stop.name;
     }
 
-    let measurement = context.measureText(string1+string2);
-    let width = padding.x * 2 + measurement.width;
-    let height = padding.y * 2 + measurement.fontBoundingBoxDescent;
+    let width1 = context.measureText(string1).width;
+    context.font = "bold 13px sans-serif";
+    let width2 = context.measureText(string2).width;
+    let width3 = context.measureText(string3).width;
+    let width = padding.x * 2 + width1 + width2 + width3;
+    let height = padding.y * 2 + context.measureText(string1).fontBoundingBoxDescent;
     let px = platform.position.x + platform.size.x/2 + direction * (platform.size.x/2 + 20);
     if (direction < 0) px -= width;
     let py = platform.position.y + platform.size.y/2 - height/2;
@@ -524,12 +528,15 @@ class StationScene extends Scene {
     context.fill();
     context.stroke();
 
+    context.font = "13px sans-serif";
     context.fillStyle = LINES_COLOR;
     context.fillText(string1, px + padding.x, py + padding.y);
-    let width1 = context.measureText(string1).width;
+
+    context.font = "bold 13px sans-serif";
+    context.fillText(string2, px + padding.x + width1, py + padding.y);
 
     context.fillStyle = line.color.toString();
-    context.fillText(string2, px + padding.x + width1, py + padding.y);
+    context.fillText(string3, px + padding.x + width1 + width2, py + padding.y);
 
     // context.save();
     // context.translate(platform.position.x + platform.size.x/2 + direction * (platform.size.x/2 + height), platform.position.y + platform.size.y/2);

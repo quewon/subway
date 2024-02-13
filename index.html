@@ -10,11 +10,11 @@
 
     <canvas id="game"></canvas>
     <canvas id="notebook"></canvas>
-    
+
     <div id="playprompt">loading...</div>
 
     <div id="lighten"></div>
-    <canvas id="noise"></canvas>
+    <img src="assets/imgs/kevs-yellow-paper.png">
     <div id="dark"></div>
 
   </body>
@@ -30,6 +30,7 @@
   <script type="text/javascript" src="js/things/confiner.js"></script>
 
   <script type="text/javascript" src="js/things/thing.js"></script>
+  <script type="text/javascript" src="js/things/interactable.js"></script>
   <script type="text/javascript" src="js/things/passenger.js"></script>
   <script type="text/javascript" src="js/things/package.js"></script>
   <script type="text/javascript" src="js/things/scene.js"></script>
@@ -47,7 +48,7 @@
 
     var STATION_NAMES = [];
     function restockStationNames() {
-      STATION_NAMES = ["house", "apt.", "rd.", "bridge", "castle", "fort", "gov", "park", "center", "field", "farm", "lake", "river", "bank", "beach", "port", "garden", "wood", "bird", "st.", "co.", "valley", "mt.", "fig", "gum", "hall", "old", "art", "factory", "way", "new", "brook", "town", "univ.", "school", "shop", "sleep", "terminal", "crowd", "train", "church", "rain", "sun"];
+      STATION_NAMES = ["house", "apt.", "rd.", "bridge", "castle", "fort", "gov", "park", "center", "field", "farm", "lake", "river", "bank", "beach", "port", "garden", "wood", "bird", "st.", "co.", "valley", "mt.", "fig", "gum", "hall", "old", "art", "factory", "way", "new", "brook", "town", "univ.", "school", "shop", "sleepy", "terminal", "crowd", "train", "church", "rain", "sun"];
     }
     restockStationNames();
 
@@ -97,9 +98,9 @@
         }
       }
 
-      for (let i=0; i<3; i++) {
-        new Package({ position: new Vector2(0, 200) });
-      }
+      // for (let i=0; i<3; i++) {
+      //   new Package({ position: new Vector2(0, 200) });
+      // }
 
       //
 
@@ -115,12 +116,12 @@
     function createPlayer() {
       player = new Passenger({
         radius: 5,
-        speed: 7,
+        speed: 8,
         color: new RGBA(238,21,21),
         avoidanceRadius: 20,
         fill: true,
         label: "you",
-        position: new Vector2(0, 200),
+        position: new Vector2(),
         // image: images.player.player
       });
       player.update = function(dt) {
@@ -149,19 +150,19 @@
           this.interactingThisFrame = false;
         }
 
-        this.closestPackage = null;
-        let closestPackageDistance = Infinity;
-        for (let thing of this.scene.things) {
-          if (thing.tag == "package") {
-            if (circleRect(this.position, this.radius + this.avoidanceRadius, thing.position, thing.size)) {
-              let distance = this.position.distanceTo(thing.position.add(thing.size.div(2)));
-              if (distance < closestPackageDistance) {
-                closestPackageDistance = distance;
-                this.closestPackage = thing;
-              }
-            }
-          }
-        }
+        // this.closestPackage = null;
+        // let closestPackageDistance = Infinity;
+        // for (let thing of this.scene.things) {
+        //   if (thing.tag == "package") {
+        //     if (circleRect(this.position, this.radius + this.avoidanceRadius, thing.position, thing.size)) {
+        //       let distance = this.position.distanceTo(thing.position.add(thing.size.div(2)));
+        //       if (distance < closestPackageDistance) {
+        //         closestPackageDistance = distance;
+        //         this.closestPackage = thing;
+        //       }
+        //     }
+        //   }
+        // }
       }
     }
 
@@ -177,6 +178,7 @@
       // sounds["dialogue-random"][0].play();
 
       createPlayer();
+      this.time = 5 * 60 * 60 + 30;
     }
   </script>
 </html>

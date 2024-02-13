@@ -1,12 +1,12 @@
 class Subway {
   constructor() {
-    this.time = 5 * 60 * 60;
     this.timeScale = 3;
+    this.time = 5 * 60 * 60;
 
     this.mapLineWidth = 2;
     this.mapStationRadius = 3;
     this.stationSpacing = 50;
-    this.shadowsEnabled = true;
+    this.shadowsEnabled = false;
 
     this.durationMultiplier = 1;
 
@@ -19,7 +19,8 @@ class Subway {
     this.mapOpen = false;
     this.mapTimer = 0;
 
-    this.homebase = this.getLargestStation().scene;
+    // this.homebase = this.getLargestStation().scene;
+    this.homebase = this.lines[0].trains[0].scene;
     // this.homebase = this.lines[0].stations[0].scene;
     this.currentScene = this.homebase;
   }
@@ -246,20 +247,37 @@ class Subway {
   }
 
   drawStationInfo(text1, text2) {
-    context.fillStyle = context.strokeStyle = LINES_COLOR;
+    // context.fillStyle = context.strokeStyle = LINES_COLOR;
+    //
+    // let y = -(window.innerHeight * GAME_SCALE)/2 + 20;
+    //
+    // context.font = "13px sans-serif";
+    // context.textAlign = "center";
+    // context.textBaseline = "top";
+    // context.fillText(text1.toUpperCase(), 0, y);
+    //
+    // y += context.measureText(text1).fontBoundingBoxDescent + 5;
+    //
+    // context.font = "bold 30px sans-serif";
+    // context.textBaseline = "top";
+    // context.strokeText(text2.toUpperCase(), 0, y);
 
-    let y = -(window.innerHeight * GAME_SCALE)/2 + 20;
+    let x = window.innerWidth/2 * GAME_SCALE - 10;
+    let y = window.innerHeight/2 * GAME_SCALE - 10;
 
-    context.font = "13px sans-serif";
-    context.textAlign = "center";
-    context.textBaseline = "top";
-    context.fillText(text1.toUpperCase(), 0, y);
+    let time = this.getTimeString();
 
-    y += context.measureText(text1).fontBoundingBoxDescent + 5;
+    context.fillStyle = LINES_COLOR;
+    context.font = "italic 15px sans-serif";
+    context.textAlign = "right";
+    context.textBaseline = "bottom";
 
-    context.font = "bold 30px sans-serif";
-    context.textBaseline = "top";
-    context.strokeText(text2.toUpperCase(), 0, y);
+    context.fillText(time, x, y);
+
+    let lineHeight = context.measureText(time).fontBoundingBoxAscent;
+    y -= lineHeight;
+
+    context.fillText(text2, x, y);
   }
 
   draw() {
@@ -293,20 +311,13 @@ class Subway {
 
       for (let station of this.stations) {
         station.drawName();
-
-        // if (this.currentScene == station.scene) {
-        //   context.font = "13px sans-serif";
-        //   context.fillStyle = player.color.toString();
-        //   context.textAlign = "left";
-        //   context.textBaseline = "bottom";
-        //   context.fillText("✱ : you are here", -padded.x/2 + 5, padded.y/2 - 5); //✷
-        // }
       }
     }
   }
 
   getTimeString() {
     let hours = Math.floor(this.time / 60 / 60);
+    if (hours < 10) hours = "0"+hours;
     let minutes = Math.floor(this.time / 60 % 60);
     if (minutes < 10) minutes = "0"+minutes;
     // let seconds = Math.floor(this.time % 60 % 60);
@@ -725,9 +736,9 @@ class Line {
         return this.stations[index - direction];
     } else if (this.type == "circle") {
       if (direction > 0) {
-        return this.stations[index+direction] || this.stations[0];
+        return this.stations[index-direction] || this.stations[this.stations.length-1];
       } else {
-        return this.stations[index+direction] || this.stations[this.stations.length-1];
+        return this.stations[index-direction] || this.stations[0];
       }
     }
 
@@ -742,9 +753,9 @@ class Line {
         return this.stations[index + direction];
     } else if (this.type == "circle") {
       if (direction > 0) {
-        return this.stations[index-direction] || this.stations[this.stations.length-1];
+        return this.stations[index+direction] || this.stations[0];
       } else {
-        return this.stations[index-direction] || this.stations[0];
+        return this.stations[index+direction] || this.stations[this.stations.length-1];
       }
     }
 
@@ -868,9 +879,7 @@ class Train {
           this.line.type == "circle" && stationIndex == initialStationIndex
         ) {
           reachedFinalStop = true;
-        }
 
-        if (reachedFinalStop) {
           this.timetable[this.timetable.length - 1].last_stop = true;
 
           subwaytime = time;
@@ -906,7 +915,7 @@ class Train {
   draw() {
     if (this.position) {
       context.fillStyle = this.line.color.toString();
-      context.fillRect(this.position.x - 2.5, this.position.y - 2.5, 5, 5);
+      context.fillRect(this.position.x - 5, this.position.y - 5, 10, 10);
     }
   }
 
@@ -1024,7 +1033,6 @@ class Station {
     context.textAlign = "left";
     context.textBaseline = "top";
     context.fillText(this.name, this.position.x + 5 + this.dotOffset.x, this.position.y + 5 + this.dotOffset.y);
-    context.font = "13px sans-serif";
   }
 
   sharedLines(station) {

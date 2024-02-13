@@ -10,7 +10,6 @@ function animate() {
   context.setTransform(1, 0, 0, 1, 0, 0);
   context.translate(canvas.width/2, canvas.height/2);
   context.scale(window.devicePixelRatio, window.devicePixelRatio);
-  context.clearRect(-canvas.width/2, -canvas.height/2, canvas.width, canvas.height);
 
   context.fillStyle = GRADIENT;
   context.beginPath();
@@ -19,7 +18,7 @@ function animate() {
 
   if (player && subway) subway.draw();
 
-  noise();
+  // noise();
 
   requestAnimationFrame(animate);
 }
@@ -47,8 +46,9 @@ window.onresize = function() {
   notebook.width = canvas.width = window.innerWidth * window.devicePixelRatio * GAME_SCALE;
   notebook.height = canvas.height = window.innerHeight * window.devicePixelRatio * GAME_SCALE;
 
-  noiseCanvas.width = window.innerWidth/2;
-  noiseCanvas.height = window.innerHeight/2;
+  // noiseCanvas.width = window.innerWidth * window.devicePixelRatio / 8;
+  // noiseCanvas.height = window.innerHeight * window.devicePixelRatio / 8;
+  // noise();
 
   if (subway && subway.currentScene) {
     subway.placeNotes();
@@ -134,21 +134,20 @@ function init_inputs() {
   }
 }
 
-const noiseCanvas = document.getElementById("noise");
-const noiseContext = noiseCanvas.getContext("2d");
-//https://codepen.io/fawority/pen/aVqWey
-function noise() {
-	const w = noiseCanvas.width,
-				h = noiseCanvas.height,
-				iData = noiseContext.createImageData(w, h),
-				buffer32 = new Uint32Array(iData.data.buffer),
-				len = buffer32.length
-
-	for (let i=0; i<len; i++) {
-    if (Math.random() < 0.5) {
-      buffer32[i] = 0x2f000000;
-    }
-  }
-
-	noiseContext.putImageData(iData, 0, 0);
-}
+// const noiseCanvas = document.getElementById("noise");
+// const noiseContext = noiseCanvas.getContext("2d");
+// function noise() { //https://codepen.io/fawority/pen/aVqWey
+// 	const w = noiseCanvas.width,
+// 				h = noiseCanvas.height,
+// 				iData = noiseContext.createImageData(w, h),
+// 				buffer32 = new Uint32Array(iData.data.buffer),
+// 				len = buffer32.length
+//
+// 	for (let i=0; i<len; i++) {
+//     if (Math.random() < 0.5) {
+//       buffer32[i] = 0x2f000000;
+//     }
+//   }
+//
+// 	noiseContext.putImageData(iData, 0, 0);
+// }

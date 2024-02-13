@@ -53,17 +53,10 @@ button:hover {
   background: #5b6d78;
 }
 
-#noise {
-  opacity: .2;
-  background: #f7f5f0;
-  mix-blend-mode: multiply;
-  /* image-rendering: crisp-edges;
-  image-rendering: pixelated; */
-}
-
 #dark {
   display: none;
 }
+
 body.dark #dark {
   display: block;
   background: #f7f5f0;
@@ -72,5 +65,5 @@ body.dark #dark {
 
 img {
   mix-blend-mode: multiply;
-  opacity: .2;
+  opacity: .5;
 }

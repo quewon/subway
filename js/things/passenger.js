@@ -5,7 +5,7 @@ class Passenger extends PhysicalThing {
     p = p || {};
     this.tag = "passenger";
 
-    this.colorOrigin = p.color || new RGBA(30, 30, 30);
+    this.colorOrigin = p.color || new RGBA();
     this.fill = p.fill == null ? false : p.fill;
 
     this.radius = p.radius == null ? 5 : p.radius;
@@ -26,8 +26,6 @@ class Passenger extends PhysicalThing {
     this.isTraveling = p.isTraveling != null ? p.isTraveling : true;
 
     this.interacting = false;
-
-    // this.image = p.image || images.passengers[images.passengers.length * Math.random() | 0];
   }
 
   setDestination() {
@@ -93,6 +91,11 @@ class Passenger extends PhysicalThing {
   }
 
   drawSelf() {
+    // if (!this.icon) {
+    //   let icons = ["✱", "✦", "★", "✸"];
+    //   this.icon = icons[icons.length * Math.random() | 0];
+    // }
+
     let color = new RGBA(this.colorOrigin);
 
     if (this.collisionsCounter > 0) {
@@ -112,7 +115,11 @@ class Passenger extends PhysicalThing {
       context.strokeStyle = context.fillStyle;
       context.stroke();
     }
-    // context.drawImage(this.image, this.position.x - this.image.width/2, this.position.y - this.image.height/2);
+
+    // context.font = "13px sans-serif";
+    // context.textAlign = "center";
+    // context.textBaseline = "middle";
+    // context.fillText(this.icon, this.position.x, this.position.y);
 
     if (this.label) {
       context.font = "13px sans-serif";
