@@ -61,6 +61,10 @@ class Interactable extends Thing {
   }
 
   update(dt) {
+    this.updateState();
+  }
+
+  updateState() {
     this.hover = false;
     this.active = false;
 
@@ -83,8 +87,8 @@ class Interactable extends Thing {
           this.active = true;
           if (interactIndex == -1) {
             this.interactingPassengers.push(passenger);
-            this.oninteract(passenger);
             this.toggled = !this.toggled;
+            this.oninteract(passenger);
           }
         } else if (interactIndex != -1) {
           this.interactingPassengers.splice(interactIndex, 1);
@@ -92,8 +96,8 @@ class Interactable extends Thing {
         }
       } else if (index != -1) {
         this.hoveringPassengers.splice(index, 1);
-        this.onleave(passenger);
         this.toggled = false;
+        this.onleave(passenger);
 
         let interactIndex = this.interactingPassengers.indexOf(passenger);
         if (interactIndex != -1) {
@@ -148,6 +152,119 @@ class Map extends Interactable {
   }
 }
 
+class LineMap extends Interactable {
+  constructor(p) {
+    p = p || {};
+    p.size = new Vector2(30, 20);
+    super(p);
+    this.line = p.line;
+    this.color = new RGBA(255, 150, 150, 1);
+    this.position = new Vector2(0, -this.scene.confiners[0].size.y/2).sub(this.size.div(2));
+    this.promptText = "map";
+    this.iconImage = images.map.star;
+
+    //
+
+    let subway = this.line.subway;
+    let radius = subway.mapStationRadius;
+    context.font = subway.stationNameFont;
+    context.textAlign = "left";
+    context.textBaseline = "top";
+
+    let min = new Vector2(Infinity, Infinity);
+    let max = new Vector2(-Infinity, -Infinity);
+
+    this.nodes = [];
+    for (let i=0; i<this.line.stations.length; i++) {
+      let station = this.line.stations[i];
+      let position = new Vector2(i * subway.stationSpacing, 0);
+
+      if (this.line.type == "circle" && i >= this.line.stations.length/2) {
+        position = new Vector2(Math.ceil(this.line.stations.length - i) * subway.stationSpacing, subway.stationSpacing);
+      }
+
+      this.nodes.push({
+        station: station,
+        position: position,
+      });
+
+      let smin = new Vector2(position.x - radius, position.y - radius);
+      let smax = new Vector2(position.x + radius * 2 +  context.measureText(station.name).width, position.y + radius * 2 +  subway.stationNameLineHeight);
+
+      if (smin.x < min.x) min.x = smin.x;
+      if (smin.y < min.y) min.y = smin.y;
+      if (smax.x > max.x) max.x = smax.x;
+      if (smax.y > max.y) max.y = smax.y;
+    }
+
+    this.mapSize = max.sub(min);
+    let mino = min.add(this.mapSize.div(2));
+
+    for (let node of this.nodes) {
+      node.position = node.position.sub(mino);
+    }
+  }
+
+  draw() {
+    this.drawBox();
+    if (!this.toggled) this.drawIcon();
+  }
+
+  drawUI() {
+    this.drawPrompt();
+    if (this.toggled) this.drawMap();
+  }
+
+  drawMap() {
+    context.fillStyle = BACKGROUND_COLOR;
+    context.strokeStyle = LINES_COLOR;
+    let padded = this.mapSize.add(new Vector2(subway.stationSpacing, subway.stationSpacing));
+
+    context.beginPath();
+    context.rect(-padded.x/2, -padded.y/2, padded.x, padded.y);
+    context.fill();
+    context.stroke();
+
+    context.strokeStyle = this.line.color.toString();
+    context.lineWidth = subway.mapLineWidth;
+    for (let i=0; i<this.nodes.length; i++) {
+      let node = this.nodes[i];
+      let next = i<this.nodes.length-1 ? this.nodes[i+1] : this.nodes[0];
+
+      context.beginPath();
+      context.moveTo(node.position.x, node.position.y);
+      context.lineTo(next.position.x, next.position.y);
+      context.stroke();
+    }
+    context.lineWidth = 1;
+
+    context.font = subway.stationNameFont;
+    context.textAlign = "left";
+    context.textBaseline = "top";
+    context.fillStyle = LINES_COLOR;
+    let radius = subway.mapStationRadius;
+    for (let node of this.nodes) {
+      context.beginPath();
+      context.arc(node.position.x, node.position.y, radius, 0, TWOPI);
+      context.fill();
+
+      let index = 1;
+      for (let line of node.station.lines) {
+        if (line == this.line) continue;
+
+        context.strokeStyle = line.color.toString();
+        context.beginPath();
+        context.arc(node.position.x, node.position.y, radius + index * 2, 0, TWOPI);
+        context.stroke();
+
+        index++;
+      }
+
+      context.fillText(node.station.name, node.position.x + radius, node.position.y + radius);
+    }
+  }
+}
+
 class TrainTracker extends Interactable {
   constructor(p) {
     p = p || {};
@@ -156,7 +273,6 @@ class TrainTracker extends Interactable {
 
     this.line = p.line;
     this.direction = p.direction;
-    this.trackerOpen = false;
 
     this.color = this.line.color;
 
@@ -196,7 +312,7 @@ class TrainTracker extends Interactable {
 
   drawUI() {
     this.drawPrompt();
-    if (this.trackerOpen) this.drawTracker();
+    if (this.toggled) this.drawTracker();
   }
 
   drawTracker() {
@@ -248,7 +364,7 @@ class TrainTracker extends Interactable {
         context.fillText(station.name, x, y);
 
         context.beginPath();
-        context.arc(x, y-5, 3, 0, Math.PI*2);
+        context.arc(x, y-5, 3, 0, TWOPI);
         context.fill();
       }
     }
@@ -279,14 +395,12 @@ class TrainTracker extends Interactable {
 
   oninteract(passenger) {
     if (passenger == player) {
-      this.trackerOpen = !this.toggled;
-      passenger.unpushable = this.trackerOpen;
+      passenger.unpushable = this.toggled;
     }
   }
 
   onleave(passenger) {
-    if (passenger == player && this.trackerOpen) {
-      this.trackerOpen = false;
+    if (passenger == player) {
       passenger.unpushable = false;
     }
   }

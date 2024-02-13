@@ -146,13 +146,13 @@ class CircleConfiner {
   drawShadow() {
     context.fillStyle = SHADOW_COLOR;
     context.beginPath();
-    context.arc(this.position.x + SHADOW_DEPTH, this.position.y + SHADOW_DEPTH, this.radius, 0, Math.PI*2);
+    context.arc(this.position.x + SHADOW_DEPTH, this.position.y + SHADOW_DEPTH, this.radius, 0, TWOPI);
     context.fill();
   }
 
   drawWalls() {
     context.beginPath();
-    context.arc(this.position.x, this.position.y, this.radius, 0, Math.PI*2);
+    context.arc(this.position.x, this.position.y, this.radius, 0, TWOPI);
 
     context.lineWidth = 2;
     context.strokeStyle = this.wallColor;
@@ -163,7 +163,7 @@ class CircleConfiner {
   drawFloors() {
     context.fillStyle = this.floorColor;
     context.beginPath();
-    context.arc(this.position.x, this.position.y, this.radius, 0, Math.PI*2);
+    context.arc(this.position.x, this.position.y, this.radius, 0, TWOPI);
     context.fill();
   }
 

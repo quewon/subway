@@ -1,3 +1,5 @@
+var TWOPI = Math.PI*2;
+
 // function rectsClosestCorners(r1, s1, r2, s2) {
 //   let points1 = [
 //     r1,

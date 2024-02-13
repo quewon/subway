@@ -108,7 +108,7 @@ class Passenger extends PhysicalThing {
 
     context.fillStyle = color.toString();
     context.beginPath();
-    context.arc(this.position.x, this.position.y, this.radius, 0, Math.PI * 2);
+    context.arc(this.position.x, this.position.y, this.radius, 0, TWOPI);
     if (this.fill) {
       context.fill();
     } else {
@@ -136,7 +136,7 @@ class Passenger extends PhysicalThing {
 
     context.strokeStyle = new RGBA(color.r, color.g, color.b, .05).toString();
     context.beginPath();
-    context.arc(this.position.x, this.position.y, this.radius + this.avoidanceRadius, 0, Math.PI * 2);
+    context.arc(this.position.x, this.position.y, this.radius + this.avoidanceRadius, 0, TWOPI);
     context.stroke();
   }
 

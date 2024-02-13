@@ -659,6 +659,11 @@ class TrainScene extends Scene {
     this.timer = 0;
 
     this.linkedStationScene = null;
+
+    new LineMap({
+      scene: this,
+      line: this.line
+    });
   }
 
   linkToScene(scene, offset) {
@@ -670,7 +675,7 @@ class TrainScene extends Scene {
     this.linkedScene = null;
     this.linkOffset = null;
     for (let thing of this.things) {
-      thing.unlink();
+      if (thing.unlink) thing.unlink();
     }
   }
 
@@ -714,8 +719,8 @@ class TrainScene extends Scene {
 
     context.fillStyle = SHADOW_COLOR;
     context.beginPath();
-    context.arc(SHADOW_DEPTH/2, -this.size.y/2 + SHADOW_DEPTH/2, this.size.x/2, 0, Math.PI*2);
-    context.arc(SHADOW_DEPTH/2, this.size.y/2 + SHADOW_DEPTH/2, this.size.x/2, 0, Math.PI*2);
+    context.arc(SHADOW_DEPTH/2, -this.size.y/2 + SHADOW_DEPTH/2, this.size.x/2, 0, TWOPI);
+    context.arc(SHADOW_DEPTH/2, this.size.y/2 + SHADOW_DEPTH/2, this.size.x/2, 0, TWOPI);
     context.rect(-this.size.x/2 + SHADOW_DEPTH/2, -this.size.y/2 + SHADOW_DEPTH/2, this.size.x, this.size.y);
     context.fill();
   }
@@ -726,8 +731,8 @@ class TrainScene extends Scene {
     context.fillStyle = BACKGROUND_COLOR;
     context.strokeStyle = this.line.color.toString();
     context.beginPath();
-    context.arc(0, -this.size.y/2, this.size.x/2, 0, Math.PI*2);
-    context.arc(0, this.size.y/2, this.size.x/2, 0, Math.PI*2);
+    context.arc(0, -this.size.y/2, this.size.x/2, 0, TWOPI);
+    context.arc(0, this.size.y/2, this.size.x/2, 0, TWOPI);
     context.fill();
     context.stroke();
 

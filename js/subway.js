@@ -7,6 +7,8 @@ class Subway {
     this.mapStationRadius = 3;
     this.stationSpacing = 50;
     this.shadowsEnabled = false;
+    this.stationNameFont = "12px sans-serif";
+    this.stationNameLineHeight = 12;
 
     this.durationMultiplier = 1;
 
@@ -111,7 +113,9 @@ class Subway {
 
     min = new Vector2(Infinity, Infinity);
     max = new Vector2(-Infinity, -Infinity);
-    context.font = "10px sans-serif";
+    context.font = this.stationNameFont;
+    context.textAlign = "left";
+    context.textBaseline = "top";
     for (let i=this.stations.length-1; i>=0; i--) {
       let station = this.stations[i];
       if (station.lines.length == 0) {
@@ -123,15 +127,14 @@ class Subway {
       station.createScene();
 
       let radius = this.mapStationRadius;
-      let width = this.mapStationRadius + context.measureText(station.name).width;
-      let height = this.mapStationRadius + 12;
+      let width = radius * 2 + context.measureText(station.name).width;
+      let height = radius * 2 + this.stationNameLineHeight;
 
       if (station.position.x - radius < min.x) min.x = station.position.x - radius;
       if (station.position.y - radius < min.y) min.y = station.position.y - radius;
       if (station.position.x + width > max.x) max.x = station.position.x + width;
       if (station.position.y + height > max.y) max.y = station.position.y + height;
     }
-    context.font = "13px sans-serif";
 
     this.size = max.sub(min);
 
@@ -247,21 +250,6 @@ class Subway {
   }
 
   drawStationInfo(text1, text2) {
-    // context.fillStyle = context.strokeStyle = LINES_COLOR;
-    //
-    // let y = -(window.innerHeight * GAME_SCALE)/2 + 20;
-    //
-    // context.font = "13px sans-serif";
-    // context.textAlign = "center";
-    // context.textBaseline = "top";
-    // context.fillText(text1.toUpperCase(), 0, y);
-    //
-    // y += context.measureText(text1).fontBoundingBoxDescent + 5;
-    //
-    // context.font = "bold 30px sans-serif";
-    // context.textBaseline = "top";
-    // context.strokeText(text2.toUpperCase(), 0, y);
-
     let x = window.innerWidth/2 * GAME_SCALE - 10;
     let y = window.innerHeight/2 * GAME_SCALE - 10;
 
@@ -612,7 +600,7 @@ class Line {
     switch (this.type) {
       case "circle":
         context.beginPath();
-        context.arc(this.position.x, this.position.y, this.radius, 0, Math.PI*2);
+        context.arc(this.position.x, this.position.y, this.radius, 0, TWOPI);
         context.stroke();
         break;
 
@@ -1029,10 +1017,10 @@ class Station {
 
   drawName() {
     context.fillStyle = this.nameColor;
-    context.font = "12px sans-serif";
+    context.font = subway.stationNameFont;
     context.textAlign = "left";
     context.textBaseline = "top";
-    context.fillText(this.name, this.position.x + 5 + this.dotOffset.x, this.position.y + 5 + this.dotOffset.y);
+    context.fillText(this.name, this.position.x + subway.mapStationRadius + this.dotOffset.x, this.position.y + subway.mapStationRadius + this.dotOffset.y);
   }
 
   sharedLines(station) {
