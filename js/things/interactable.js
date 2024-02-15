@@ -19,7 +19,6 @@ class Interactable extends Thing {
 
   draw() {
     this.drawBox();
-    this.drawLabel();
   }
 
   drawBox() {
@@ -161,14 +160,16 @@ class LineMap extends Interactable {
     this.color = this.line.color;
     this.position = new Vector2(0, -this.scene.confiners[0].size.y/2).sub(this.size.div(2));
     this.promptText = "map";
-    this.iconImage = images.map.star;
+    this.iconImage = images.icons.smallstar;
+
+    this.timer = 0;
 
     //
 
     let subway = this.line.subway;
     let radius = subway.mapStationRadius;
     context.font = subway.stationNameFont;
-    context.textAlign = "left";
+    context.textAlign = "center";
     context.textBaseline = "top";
 
     let min = new Vector2(Infinity, Infinity);
@@ -188,8 +189,9 @@ class LineMap extends Interactable {
         position: position,
       });
 
-      let smin = new Vector2(position.x - radius, position.y - radius);
-      let smax = new Vector2(position.x + radius * 2 +  context.measureText(station.name).width, position.y + radius * 2 +  subway.stationNameLineHeight);
+      let twidth = context.measureText(station.name).width;
+      let smin = new Vector2(position.x - twidth/2, position.y - radius);
+      let smax = new Vector2(position.x + twidth/2, position.y + radius * 4 +  subway.stationNameLineHeight);
 
       if (smin.x < min.x) min.x = smin.x;
       if (smin.y < min.y) min.y = smin.y;
@@ -212,7 +214,7 @@ class LineMap extends Interactable {
 
   drawUI() {
     this.drawPrompt();
-    if (this.toggled) this.drawMap();
+    if (this.timer > 0) this.drawMap();
   }
 
   drawMap() {
@@ -238,29 +240,62 @@ class LineMap extends Interactable {
     }
     context.lineWidth = 1;
 
+    if (this.timer < .2) return;
+
     context.font = subway.stationNameFont;
-    context.textAlign = "left";
+    context.textAlign = "center";
     context.textBaseline = "top";
-    context.fillStyle = LINES_COLOR;
     let radius = subway.mapStationRadius;
     for (let node of this.nodes) {
-      context.beginPath();
-      context.arc(node.position.x, node.position.y, radius, 0, TWOPI);
-      context.fill();
+      let w = node.station.dotImage.width/1.5;
+      let h = node.station.dotImage.height/1.5;
+      context.drawImage(node.station.dotImage, node.position.x - w/2 + node.station.dotOffset.x, node.position.y - h/2 + node.station.dotOffset.y, w, h);
 
-      let index = 1;
+      context.fillStyle = LINES_COLOR;
+      context.fillText(node.station.name, node.position.x, node.position.y + radius * 3);
+
+      let lines = node.station.lines.length - 1;
+      let index = 0;
       for (let line of node.station.lines) {
         if (line == this.line) continue;
 
-        context.strokeStyle = line.color.toString();
+        context.fillStyle = line.color.toString();
         context.beginPath();
-        context.arc(node.position.x, node.position.y, radius + index * 2, 0, TWOPI);
-        context.stroke();
+        context.arc(node.position.x - (index - lines/2) * radius * 3 - radius, node.position.y + radius * 5 + subway.stationNameLineHeight, subway.mapStationRadius, 0, TWOPI);
+        context.fill();
 
         index++;
       }
+    }
+  }
 
-      context.fillText(node.station.name, node.position.x + radius, node.position.y + radius);
+  update(dt) {
+    this.updateState();
+    this.updateMap(dt);
+  }
+
+  updateMap(dt) {
+    if (this.toggled) {
+      this.timer += dt/1000 * 1.5;
+      if (this.timer > .5) this.timer = .5;
+    } else if (this.timer > 0) {
+      this.timer -= dt/1000 * 3;
+    }
+  }
+
+  oninteract(passenger) {
+    if (passenger == player) {
+      if (subway.toggled) {
+        passenger.unpushable = false;
+      } else {
+        passenger.unpushable = true;
+      }
+    }
+  }
+
+  onleave(passenger) {
+    if (passenger == player && subway.toggled) {
+      passenger.unpushable = false;
     }
   }
 }
@@ -363,9 +398,9 @@ class TrainTracker extends Interactable {
         let x = -width/2 + textWidth * i + textWidth/2;
         context.fillText(station.name, x, y);
 
-        context.beginPath();
-        context.arc(x, y-5, 3, 0, TWOPI);
-        context.fill();
+        let w = station.dotImage.width/1.5;
+        let h = station.dotImage.height/1.5;
+        context.drawImage(station.dotImage, x - w/2 + station.dotOffset.x, y - 5 - h/2 + station.dotOffset.y, w, h);
       }
     }
 
@@ -409,5 +444,32 @@ class TrainTracker extends Interactable {
 class VendingMachine extends Interactable {
   constructor() {
 
+  }
+}
+
+class LightSwitch extends Interactable {
+  constructor(p) {
+    p.size = new Vector2(10, 30);
+    super(p);
+
+    this.color = new RGBA();
+    this.promptText = "light switch";
+  }
+
+  drawBox() {
+    context.fillStyle = context.strokeStyle = this.color.toString();
+    context.beginPath();
+    context.rect(this.position.x, this.position.y, this.size.x, this.size.y);
+    if (document.body.classList.contains("dark")) {
+      context.fill();
+    } else {
+      context.stroke();
+    }
+  }
+
+  oninteract(passenger) {
+    if (passenger == player) {
+      document.body.classList.toggle("dark");
+    }
   }
 }

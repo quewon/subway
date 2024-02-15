@@ -56,15 +56,15 @@ class Passenger extends PhysicalThing {
     this.scene = scene;
     this.scene.things.push(this);
 
-    if (this == player) {
-      subway.setScene(scene);
-    }
-
     if (scene.tag == "station") {
       this.route = null;
       if (scene == this.home) {
         this.destination = null;
       }
+    }
+
+    if (this == player) {
+      subway.setScene(scene);
     }
   }
 
@@ -317,6 +317,48 @@ class Passenger extends PhysicalThing {
 
   headToDestination() {
     let desiredDirection = new Vector2();
+
+    if (this.scene.tag == "ogygia" && this.previousConfiner) {
+      let line = this.scene.station.lines[0];
+      let ogygia = this.scene.station;
+      let platform = this.scene.platformConfiners[0];
+
+      let inPlatform = this.previousConfiner.isPlatform;
+
+      if (inPlatform) {
+        let platformCenter = platform.position.add(platform.size.div(2));
+
+        let trainHere = null;
+        let direction;
+        for (let info of this.scene.trainsHere) {
+          if (
+            info.scene.train.line == line &&
+            info.scene.doors[info.index % 2].open
+          ) {
+            trainHere = info.scene.train;
+            direction = info.data.direction;
+            break;
+          }
+        }
+
+        if (trainHere) {
+          let desiredPosition = platformCenter.add(new Vector2((platform.size.x/2 + 30) * direction, 0));
+          desiredDirection = desiredPosition.sub(this.position);
+
+          if (this.linkedScene == trainHere.scene) {
+            this.moveToLinkedScene();
+            this.previousConfiner = trainHere.scene.confiners[0];
+          }
+        } else {
+          let desiredPosition = platformCenter;
+          return desiredPosition.sub(this.position).normalize().mul(.5);
+        }
+      } else {
+        return new Vector2(1, 0);
+      }
+
+      return;
+    }
 
     if (
       !this.destination ||

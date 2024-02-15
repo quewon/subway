@@ -4,7 +4,7 @@ var svgslist = {
   dots: 38,
   tutorial: ["notes"],
   map: ["star"],
-  icons: ["train", "rtrain"]
+  icons: ["train", "rtrain", "smallstar"]
 };
 
 function load_images(onload) {

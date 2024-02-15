@@ -29,12 +29,16 @@ class Subway {
   }
 
   setScene(scene) {
-    if (this.currentScene) {
-      this.saveNotes(this.currentScene);
+    let previousScene = this.currentScene;
+    this.currentScene = scene;
+
+    if (previousScene) {
+      this.saveNotes(previousScene);
+      previousScene.mute();
     }
 
-    this.currentScene = scene;
     this.placeNotes();
+    scene.unmute();
   }
 
   saveNotes(scene) {
@@ -947,6 +951,8 @@ class Train {
           }
         }
 
+        let doors_closing = later.time - time < this.line.doorTime + 5;
+
         return {
           active: active,
           stopped: stopped,
@@ -955,6 +961,7 @@ class Train {
           next_stop: earlier.next_stop,
           direction: earlier.direction,
           doors_open: doors_open,
+          doors_closing: doors_closing,
           t: smoothstep(t),
           door_t: smoothstep(door_t),
         }
@@ -1049,5 +1056,17 @@ class Ogygia {
     this.lines = [line];
     this.name = "";
     this.scene = new OgygiaScene(this);
+  }
+
+  sharedLines(station) {
+    let sharedLines = [];
+
+    for (let line of this.lines) {
+      if (station.lines.indexOf(line) != -1) {
+        sharedLines.push(line);
+      }
+    }
+
+    return sharedLines;
   }
 }

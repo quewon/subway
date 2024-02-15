@@ -172,6 +172,9 @@ class Scene {
   closeDoor(i) {
     if (this.doors[i]) this.doors[i].open = false;
   }
+
+  mute() { }
+  unmute() { }
 }
 
 class StationScene extends Scene {
@@ -248,6 +251,7 @@ class StationScene extends Scene {
 
     this.tag = "station";
     this.station = station;
+    this.ambience = sounds.ambience.heathrow;
     this.platformConfiners = platformConfiners;
 
     this.trainPositions = [];
@@ -276,6 +280,11 @@ class StationScene extends Scene {
           position = confiner.position.add(confiner.size.mul(.5));
         }
         new Map({ scene: this, position: position });
+
+        if (confiner == confiners[0]) {
+          let radius = confiner.radius ? confiner.radius : confiner.size.x/2;
+          new LightSwitch({ scene: this, position: new Vector2(position.x - radius, position.y) });
+        }
       }
     }
 
@@ -403,6 +412,10 @@ class StationScene extends Scene {
     this.updateDoors(dt);
     this.updateThings(dt);
     this.confineThings(dt);
+
+    for (let info of this.trainsHere) {
+      info.scene.updateSound();
+    }
   }
 
   draw() {
@@ -614,6 +627,16 @@ class StationScene extends Scene {
       context.restore();
     }
   }
+
+  mute() {
+    this.ambience.pause();
+  }
+
+  unmute() {
+    if (!this.ambience.playing()) {
+      this.ambience.play();
+    }
+  }
 }
 
 class OgygiaScene extends StationScene {
@@ -781,6 +804,23 @@ class TrainScene extends Scene {
       scene: this,
       line: this.line
     });
+
+    this.audioIds = {};
+    this.noiseLayers = [
+      {
+        sound: sounds.sfx["train layer 1"],
+        id: sounds.sfx["train layer 1"].play()
+      },
+      {
+        sound: sounds.sfx["train layer 2"],
+        id: sounds.sfx["train layer 2"].play()
+      },
+      {
+        sound: sounds.sfx["train layer 3"],
+        id: sounds.sfx["train layer 3"].play()
+      }
+    ];
+    this.mute();
   }
 
   linkToScene(scene, offset) {
@@ -883,6 +923,8 @@ class TrainScene extends Scene {
           Math.cos(this.jiggleSpeed * this.timer) * this.jiggleAmount
         );
       }
+
+      this.updateSound();
     }
 
     this.updateThings(dt);
@@ -895,6 +937,104 @@ class TrainScene extends Scene {
       if (thing.tag == "passenger") {
         thing.applyForce(this.jiggleOffset.mul(-1 * dt/1000));
       }
+    }
+  }
+
+  updateSound() {
+    let data = this.train.currentData;
+
+    if (player && (player.scene == this || this.linkedScene == player.scene)) {
+      if (data.stopped) {
+        delete this.audioIds.thisStop;
+
+        if (data.doors_closing && !this.audioIds.doorsClosing) {
+          this.audioIds.doorsClosing = sounds.cannedvoice["doors closing"].play();
+        }
+      } else {
+        delete this.audioIds.doorsClosing;
+
+        if (data.t > .9) {
+          if (!this.audioIds.thisStop) {
+            this.audioIds.thisStop = sounds.cannedvoice["this stop is"].play();
+            sounds.cannedvoice["this stop is"].once("end", function() {
+              this.audioIds.stationName = sounds.cannedvoice[data.this_stop.name.replace(".", "")].play();
+
+              sounds.cannedvoice[data.this_stop.name].once("end", function() {
+                this.audioIds.station = sounds.cannedvoice["station"].play();
+
+                if (data.next_stop) {
+                  sounds.cannedvoice["station"].once("end", function() {
+                    this.audioIds.nextStop = sounds.cannedvoice["the next stop is"].play();
+
+                    sounds.cannedvoice["the next stop is"].once("end", function() {
+                      sounds.cannedvoice[data.next_stop.name].play();
+                    }.bind(this), this.audioIds.nextStop);
+                  }.bind(this), this.audioIds.station);
+                } else {
+                  sounds.cannedvoice["this is the final stop"].play();
+                }
+              }.bind(this), this.audioIds.stationName);
+            }.bind(this), this.audioIds.thisStop);
+          }
+        }
+      }
+    }
+
+    if (!player || player.scene != this) return;
+
+    let t = data.t;
+
+    if (data.stopped && data.doors_open) {
+      this.mute();
+
+      if (!sounds.ambience.heathrow.playing()) {
+        sounds.ambience.heathrow.play();
+      }
+    } else {
+      let n = this.noiseLayers[0];
+      if (!n.sound.playing(n.id)) {
+        for (let layer of this.noiseLayers) {
+          layer.sound.seek(0, layer.id);
+          layer.sound.play(layer.id);
+        }
+      }
+
+      if (sounds.ambience.heathrow.playing()) {
+        sounds.ambience.heathrow.pause();
+      }
+    }
+
+    if (data.stopped) {
+      if (!data.doors_open) {
+        t = data.door_t;
+        this.setNoiseLayersVolume(
+          1,
+          lerp(1, 0, t),
+          0
+        );
+      }
+    } else {
+      this.setNoiseLayersVolume(
+        1,
+        t<.5 ? lerp(1, 0, t * 2) : lerp(0, 1, (t-.5) * 2),
+        t<.5 ? lerp(0, 1, t * 2) : lerp(1, 0, (t-.5) * 2)
+      );
+    }
+  }
+
+  setNoiseLayersVolume(v1, v2, v3) {
+    let n1 = this.noiseLayers[0];
+    let n2 = this.noiseLayers[1];
+    let n3 = this.noiseLayers[2];
+    if (v1 != null) n1.sound.volume(v1, n1.id);
+    if (v2 != null) n2.sound.volume(v2, n2.id);
+    if (v3 != null) n3.sound.volume(v3, n3.id);
+  }
+
+  mute() {
+    this.setNoiseLayersVolume(0, 0, 0);
+    for (let layer of this.noiseLayers) {
+      layer.sound.pause(layer.id);
     }
   }
 }

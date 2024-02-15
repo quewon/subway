@@ -35,7 +35,7 @@
   <script type="text/javascript" src="js/things/package.js"></script>
   <script type="text/javascript" src="js/things/scene.js"></script>
   <script type="text/javascript">
-    var GAME_SCALE = 1/1.1;
+    var GAME_SCALE = 1/1.15;
 
     // let gradient = context.createLinearGradient(-300, -600, 300, 600);
     var GRADIENT;
@@ -52,11 +52,11 @@
     }
     restockStationNames();
 
-    var RECIPIENT_NAMES = [];
-    function restockRecipientNames() {
-      RECIPIENT_NAMES = ["jip", "ib", "goa", "sin", "sun", "aba"];
-    }
-    restockRecipientNames();
+    // var RECIPIENT_NAMES = [];
+    // function restockRecipientNames() {
+    //   RECIPIENT_NAMES = ["jip", "ib", "goa", "sin", "sun", "aba"];
+    // }
+    // restockRecipientNames();
 
     var player;
     var subway;
@@ -67,6 +67,16 @@
 
     function init() {
       console.clear();
+
+      sounds.sfx["train layer 1"].loop(true);
+      sounds.sfx["train layer 2"].loop(true);
+      sounds.sfx["train layer 3"].loop(true);
+      sounds.sfx["train layer 1"].volume(0);
+      sounds.sfx["train layer 2"].volume(0);
+      sounds.sfx["train layer 3"].volume(0);
+
+      sounds.ambience.heathrow.loop(true);
+      sounds.ambience.heathrow.volume(.5);
 
       window.onresize();
 
@@ -106,7 +116,7 @@
 
       animate();
       update();
-      document.getElementById("playprompt").textContent = "click to begin";
+      document.getElementById("playprompt").innerHTML = "<p><b>sound</b> is important here.<br><br>use <b>arrow keys / WASD / ZQSD</b> to walk.<br><br>click to begin.</p>";
       document.onmousedown = document.oncontextmenu = function(e) {
         e.preventDefault();
         play();
@@ -116,13 +126,12 @@
     function createPlayer() {
       player = new Passenger({
         radius: 5,
-        speed: 8,
+        speed: 10,
         color: new RGBA(238,21,21),
         avoidanceRadius: 20,
         fill: true,
         label: "you",
         position: new Vector2(),
-        // image: images.player.player
       });
       player.update = function(dt) {
         let input = new Vector2();
@@ -164,13 +173,12 @@
         //   }
         // }
       }
+
+      player.exit();
+      player.enter(subway.currentScene);
     }
 
     function play() {
-      sounds.ambience.heathrow.loop(true);
-      sounds.ambience.heathrow.volume(.5);
-      sounds.ambience.heathrow.play();
-
       document.getElementById("playprompt").classList.add("gone");
 
       init_inputs();
