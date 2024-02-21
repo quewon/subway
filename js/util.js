@@ -1,38 +1,5 @@
 var TWOPI = Math.PI*2;
 
-// function rectsClosestCorners(r1, s1, r2, s2) {
-//   let points1 = [
-//     r1,
-//     r1.add(new Vector2(s1.x, 0)),
-//     r1.add(s1),
-//     r1.add(new Vector2(0, s1.y))
-//   ];
-//
-//   let points2 = [
-//     r2,
-//     r2.add(new Vector2(s2.x, 0)),
-//     r2.add(s2),
-//     r2.add(new Vector2(0, s2.y))
-//   ];
-//
-//   let closestPoints;
-//   let closestPointsDistance = Infinity;
-//
-//   for (let point of points1) {
-//     for (let point2 of points2) {
-//       if (closestPoints && closestPoints[0] == point2 && closestPoints[1] == point) continue;
-//
-//       let distance = point.distanceTo(point2);
-//       if (distance < closestPointsDistance) {
-//         closestPointsDistance = distance;
-//         closestPoints = [point, point2];
-//       }
-//     }
-//   }
-//
-//   return closestPoints;
-// }
-
 function pointInRect(point, rp, rsize) {
   return point.x >= rp.x && point.x <= rp.x + rsize.x && point.y >= rp.y && point.y <= rp.y + rsize.y;
 }

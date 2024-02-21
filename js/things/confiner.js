@@ -34,6 +34,11 @@ class RectConfiner {
 
   drawFloors() {
     context.fillStyle = this.floorColor;
+
+    // if (mouse.confiner && mouse.confiner == this) {
+    //   context.fillStyle = "red";
+    // }
+
     context.beginPath();
     context.rect(this.position.x, this.position.y, this.size.x, this.size.y);
     context.fill();
@@ -124,6 +129,14 @@ class RectConfiner {
       }
     }
   }
+
+  containsMouse(offset) {
+    let m = mouse.gamePosition.sub(offset);
+    if (m.x >= this.position.x && m.y >= this.position.y && m.x <= this.position.x + this.size.x && m.y <= this.position.y + this.size.y) {
+      return true;
+    }
+    return false;
+  }
 }
 
 class CircleConfiner {
@@ -162,6 +175,10 @@ class CircleConfiner {
 
   drawFloors() {
     context.fillStyle = this.floorColor;
+    // if (mouse.confiner && mouse.confiner == this) {
+    //   context.fillStyle = "red";
+    // }
+
     context.beginPath();
     context.arc(this.position.x, this.position.y, this.radius, 0, TWOPI);
     context.fill();
@@ -217,6 +234,11 @@ class CircleConfiner {
     force.y += direction.y * distance/50;
 
     thing.applyForce(force.mul(dt/500 * thing.speed));
+  }
+
+  containsMouse(offset) {
+    let m = mouse.gamePosition.sub(offset);
+    return pointInCircle(m, this.position, this.radius);
   }
 }
 

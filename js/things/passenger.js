@@ -5,18 +5,15 @@ class Passenger extends PhysicalThing {
     p = p || {};
     this.tag = "passenger";
 
-    this.colorOrigin = p.color || new RGBA();
-    this.fill = p.fill == null ? false : p.fill;
-
     this.radius = p.radius == null ? 5 : p.radius;
     this.avoidanceRadius = p.avoidanceRadius == null ? Math.random() * 15 + 5 : p.avoidanceRadius;
     this.avoidMultiplier = .3;
     this.navigationMultiplier = .3;
 
     if (Math.random() > .5) {
-      // this.speakingRadius = 50;
+      this.speakingRadius = 50;
       this.volumeRadius = 150;
-      // this.dialogueHowl = sounds["dialogue-random"][sounds["dialogue-random"].length * Math.random() | 0];
+      this.dialogueHowl = sounds["dialogue/stranger/solo"][sounds["dialogue/stranger/solo"].length * Math.random() | 0];
     }
 
     this.routePreference = Math.random() > .5 ? "simple" : "short";
@@ -26,6 +23,8 @@ class Passenger extends PhysicalThing {
     this.isTraveling = p.isTraveling != null ? p.isTraveling : true;
 
     this.interacting = false;
+
+    this.deselect();
   }
 
   setDestination() {
@@ -77,6 +76,47 @@ class Passenger extends PhysicalThing {
     }
 
     if (this.dialogueId) this.drawSpeakingRadius();
+
+    if (this.playerDestination && this.playerDestinationConfiner) {
+      let p = this.playerDestination;
+
+      if (this.scene != this.playerDestinationScene) {
+        if (this.scene.tag == "train") {
+          p = p.sub(this.scene.cameraOffset);
+        } else {
+          p = p.add(this.playerDestinationScene.cameraOffset);
+        }
+      }
+
+      context.fillStyle = "red";
+      context.beginPath();
+      context.arc(p.x, p.y, 5, 0, TWOPI);
+      context.fill();
+    }
+  }
+
+  deselect() {
+    if (this == player) player = null;
+    this.colorOrigin = new RGBA();
+    this.label = null;
+    this.selected = false;
+
+    this.playerDestination = null;
+    this.playerDestinationScene = null;
+    this.playerDestinationConfiner = null;
+  }
+
+  select() {
+    player.deselect();
+    player = this;
+    this.colorOrigin = new RGBA(238,21,21);
+    this.label = "you";
+    if (this.dialogueId) {
+      this.stopSpeaking();
+    }
+    this.selected = true;
+
+    subway.currentScene = this.scene;
   }
 
   drawSpeakingRadius() {
@@ -91,11 +131,6 @@ class Passenger extends PhysicalThing {
   }
 
   drawSelf() {
-    // if (!this.icon) {
-    //   let icons = ["✱", "✦", "★", "✸"];
-    //   this.icon = icons[icons.length * Math.random() | 0];
-    // }
-
     let color = new RGBA(this.colorOrigin);
 
     if (this.collisionsCounter > 0) {
@@ -109,7 +144,7 @@ class Passenger extends PhysicalThing {
     context.fillStyle = color.toString();
     context.beginPath();
     context.arc(this.position.x, this.position.y, this.radius, 0, TWOPI);
-    if (this.fill) {
+    if (player == this) {
       context.fill();
     } else {
       context.strokeStyle = context.fillStyle;
@@ -174,27 +209,31 @@ class Passenger extends PhysicalThing {
       );
     }
 
-    if (!this.dialogueId) {
+    if (player != this) {
       if (this.group) {
         this.direction = this.direction.add(
           this.followGroup()
           .mul(this.group.strength * dt/10)
         );
       }
-
+  
       if (this.isTraveling) {
         this.direction = this.direction.add(
           this.headToDestination()
           .mul(this.navigationMultiplier * dt/10)
         );
       }
+    } else {
+      this.direction = this.headToPlayerDestination();
     }
 
     this.direction = this.direction.normalize();
 
     this.move(dt);
 
-    if (this.dialogueHowl) this.speak();
+    if (player != this && this.dialogueHowl) this.speak();
+
+    this.updateInteractionState();
   }
 
   speak() {
@@ -259,6 +298,168 @@ class Passenger extends PhysicalThing {
 
     this.dialogueHowl.stop(this.dialogueId);
     this.dialogueId = null;
+  }
+
+  headToPlayerDestination() {
+    let direction = new Vector2();
+
+    let destination = this.playerDestination;
+    let scene = this.playerDestinationScene;
+
+    if (scene && this.scene != scene) {
+      if (this.scene.tag == "train") {
+        let train = this.scene.train;
+        let data = train.currentData;
+        let confiner = this.scene.confiners[0];
+        let confinerCenter = confiner.position.add(confiner.size.div(2));
+
+        if (data.doors_open) {
+          let desiredPosition = new Vector2(confiner.size.x/2 * data.direction * -1, 0).add(confinerCenter);
+          direction = desiredPosition.sub(this.position);
+
+          let linkedScene = train.scene.linkedScene;
+          let station = linkedScene.station;
+
+          if (this.linkedScene == linkedScene) {
+            this.moveToLinkedScene();
+            let platform = linkedScene.platformConfiners[station.lines.indexOf(train.line)];
+            this.previousConfiner = platform;
+          }
+        }
+      } else if (this.scene.tag == "station") {
+        let train = scene.train;
+        let line = train.line;
+        let lineIndex = this.scene.station.lines.indexOf(line);
+        let platform = this.scene.platformConfiners[lineIndex];
+
+        let confiner = this.previousConfiner;
+        if (confiner.isHall) {
+          let hall = confiner;
+          let hallCenter = hall.position;
+          if (this.aimForHallCenter) {
+            let hallRadius;
+            if (hall.radius) {
+              hallRadius = hall.radius;
+            } else {
+              hallRadius = Math.min(hall.size.y/2, hall.size.x/2);
+              hallCenter = hall.position.add(hall.size.div(2));
+            }
+
+            if (this.position.distanceTo(hallCenter) <= hallRadius/2) {
+              this.aimForHallCenter = false;
+            }
+
+            direction = hallCenter.sub(this.position);
+          } else {
+            let platformCenter = platform.position.add(platform.size.div(2));
+            let distance = platformCenter.sub(this.position);
+
+            if (Math.abs(distance.x) > platform.size.x) {
+              direction = new Vector2(distance.x, hallCenter.y - this.position.y);
+            } else {
+              direction = distance;
+            }
+          }
+        } else if (confiner.isPlatform) {
+          if (confiner == platform) {
+            let platformCenter = platform.position.add(platform.size.div(2));
+            let info = null;
+
+            for (let i of this.scene.trainsHere) {
+              if (i.scene == scene && i.scene.doors[i.index % 2].open) {
+                info = i;
+              }
+            }
+
+            if (info) {
+              let desiredPosition = platformCenter.add(new Vector2((platform.size.x/2 + 30) * info.data.direction, 0));
+              direction = desiredPosition.sub(this.position);
+
+              if (this.linkedScene == scene) {
+                this.moveToLinkedScene();
+                this.previousConfiner = scene.confiners[0];
+              }
+            } else {
+              this.playerDestination = null;
+              this.playerDestinationScene = null;
+              this.playerDestinationConfiner = null;
+            }
+          } else {
+            this.aimForHallCenter = true;
+            if (this.position.y > 0) {
+              direction = new Vector2(0, -1);
+            } else {
+              direction = new Vector2(0, 1);
+            }
+          }
+        } else { //bridge
+          let platformCenter = platform.position.add(platform.size.div(2));
+          direction = platformCenter.sub(this.position);
+          direction = new Vector2(direction.x, 0);
+
+          this.aimForHallCenter = true;
+        }
+      }
+    } else if (destination && this.playerDestinationConfiner) {
+      if (this.previousConfiner == this.playerDestinationConfiner) {
+        direction = destination.sub(this.position);
+
+        if (this.position.distanceTo(destination) < this.avoidanceRadius) {
+          this.playerDestination = null;
+          this.playerDestinationScene = null;
+          this.playerDestinationConfiner = null;
+        }
+      } else {
+        if (this.scene.tag == "station") {
+          let platform = this.playerDestinationConfiner;
+  
+          let confiner = this.previousConfiner;
+          if (confiner.isHall) {
+            let hall = confiner;
+            let hallCenter = hall.position;
+            if (this.aimForHallCenter) {
+              let hallRadius;
+              if (hall.radius) {
+                hallRadius = hall.radius;
+              } else {
+                hallRadius = Math.min(hall.size.y/2, hall.size.x/2);
+                hallCenter = hall.position.add(hall.size.div(2));
+              }
+  
+              if (this.position.distanceTo(hallCenter) <= hallRadius/2) {
+                this.aimForHallCenter = false;
+              }
+  
+              direction = hallCenter.sub(this.position);
+            } else {
+              let platformCenter = platform.position.add(platform.size.div(2));
+              let distance = platformCenter.sub(this.position);
+  
+              if (Math.abs(distance.x) > platform.size.x) {
+                direction = new Vector2(distance.x, hallCenter.y - this.position.y);
+              } else {
+                direction = distance;
+              }
+            }
+          } else if (confiner.isPlatform) {
+            this.aimForHallCenter = true;
+            if (this.position.y > 0) {
+              direction = new Vector2(0, -1);
+            } else {
+              direction = new Vector2(0, 1);
+            }
+          } else { //bridge
+            let platformCenter = platform.position.add(platform.size.div(2));
+            direction = platformCenter.sub(this.position);
+            direction = new Vector2(direction.x, 0);
+  
+            this.aimForHallCenter = true;
+          }
+        }
+      }
+    }
+
+    return direction;
   }
 
   avoidPhysicalThings() {

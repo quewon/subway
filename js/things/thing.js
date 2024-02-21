@@ -20,6 +20,44 @@ class Thing {
   draw() {}
   update(dt) {}
 
+  updateInteractionState() {
+    this.hovered = false;
+
+    if (this.mouseCollides()) {
+      document.body.classList.add("pointer");
+      this.hovered = true;
+
+      if (mouse.down && !this.selected) {
+        this.select();
+      }
+    }
+  }
+
+  mouseCollides() {
+    let m = mouse.gamePosition;
+
+    if (subway.currentScene == this.scene) {
+      m = m.sub(this.scene.cameraOffset);
+    } else if (subway.currentScene.linkedScene == this.scene) {
+      m = m.sub(subway.currentScene.linkedScene.cameraOffset);
+    } else {
+      return false;
+    }
+
+    if (this.radius) {
+      return pointInCircle(m, this.position, this.radius);
+    } else {
+      return m.x >= this.position.x && m.y >= this.position.y && m.x <= this.position.x + this.size.x && m.y <= this.position.y + this.size.y;
+    }
+  }
+
+  select() {
+    this.selected = true;
+  }
+  deselect() {
+    this.selected = false;
+  }
+
   exit() {
     this.scene.things.splice(this.scene.things.indexOf(this), 1);
     this.scene = null;
@@ -101,7 +139,11 @@ class PhysicalThing extends Thing {
 
   move(dt) {
     this.velocity = this.velocity.div(this.frictionFactor);
-    this.velocity = this.velocity.add(this.direction.mul(this.speed * dt/1000));
+    if (this == player) {
+      this.velocity = this.velocity.add(this.direction.mul(PLAYER_SPEED * dt/1000));
+    } else {
+      this.velocity = this.velocity.add(this.direction.mul(this.speed * dt/1000));
+    }
     this.position = this.position.add(this.velocity);
 
     if (!this.unpushable) this.collideWithThings(dt);

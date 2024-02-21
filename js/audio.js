@@ -11,7 +11,8 @@ var soundslist = {
     "the next stop is",
     "doors closing",
     "this is the final stop"
-  ]
+  ],
+  "dialogue/stranger/solo": 0
 }
 function load_sounds(onload) {
   console.log("loading sounds...");
@@ -53,7 +54,7 @@ function load_sounds(onload) {
         soundsToLoad++;
 
         let sound = new Howl({
-          src: ["assets/sounds/"+folder+"/"+i+".wav"]
+          src: ["assets/sounds/"+folder+"/"+i+".m4a"]
         });
         sound.once('load', function() {
           soundsToLoad--;

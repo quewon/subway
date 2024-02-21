@@ -6,6 +6,7 @@ class Scene {
     this.color = new RGBA();
     this.confiners = confiners || [new RectConfiner()];
     this.doors = doors || [];
+    this.cameraOffset = new Vector2();
     this.setSize();
 
     this.notebook = new ImageData(1, 1);
@@ -70,6 +71,15 @@ class Scene {
     }
   }
 
+  getConfinerAtMouse() {
+    for (let confiner of this.confiners) {
+      if (confiner.containsMouse(this.cameraOffset)) {
+        return confiner;
+      }
+    }
+    return null;
+  }
+
   drawThings() {
     for (let thing of this.things) {
       thing.draw();
@@ -86,6 +96,8 @@ class Scene {
   }
 
   camera() {
+    this.cameraOffset = new Vector2();
+
     if (player && player.scene == this) {
       let ww = window.innerWidth * GAME_SCALE;
       let wh = window.innerHeight * GAME_SCALE;
@@ -97,6 +109,7 @@ class Scene {
           offset = Math.sign(player.position.x) * (-sw/2 + ww/2) + player.position.x;
         }
         context.translate(-player.position.x + offset, 0);
+        this.cameraOffset = new Vector2(-player.position.x + offset, 0);
       }
 
       if (sh > wh) {
@@ -105,6 +118,7 @@ class Scene {
           offset = Math.sign(player.position.y) * (-sh/2 + wh/2) + player.position.y;
         }
         context.translate(0, -player.position.y + offset);
+        this.cameraOffset = new Vector2(0, -player.position.y + offset);
       }
     }
   }
@@ -112,6 +126,20 @@ class Scene {
   update(dt) {
     this.updateThings(dt);
     this.confineThings(dt);
+    this.updateMouseInteraction();
+  }
+
+  updateMouseInteraction() {
+    if (subway.currentScene != this && subway.currentScene != this.linkedScene) return;
+
+    let m = mouse.gamePosition.sub(mouse.confinerScene.cameraOffset);
+    if (player && m.distanceTo(player.position) >= player.avoidanceRadius && mouse.down) {
+      let scene = mouse.confinerScene;
+
+      player.playerDestination = m;
+      player.playerDestinationScene = scene;
+      player.playerDestinationConfiner = mouse.confiner;
+    }
   }
 
   updateThings(dt) {
@@ -410,12 +438,30 @@ class StationScene extends Scene {
   update(dt) {
     this.getTrainsHere();
     this.updateDoors(dt);
+
+    if (subway.currentScene == this) {
+      mouse.confiner = this.getConfinerAtMouse();
+      if (mouse.confiner) {
+        mouse.confinerScene = this;
+      } else {
+        for (let info of this.trainsHere) {
+          mouse.confiner = info.scene.getConfinerAtMouse();
+          if (mouse.confiner) {
+            mouse.confinerScene = info.scene;
+            break;
+          }
+        }
+      }
+    }
+
     this.updateThings(dt);
     this.confineThings(dt);
 
     for (let info of this.trainsHere) {
       info.scene.updateSound();
     }
+
+    this.updateMouseInteraction();
   }
 
   draw() {
@@ -838,6 +884,13 @@ class TrainScene extends Scene {
 
   draw() {
     if (this.linkedScene) {
+      let data = this.train.currentData;
+      if (data && this.anticipatedStationOffset) {
+        let offset = new Vector2();
+        offset = offset.lerp(this.anticipatedStationOffset, data.door_t);
+        this.cameraOffset = offset;
+      }
+
       this.linkedScene.draw();
     } else {
       this.camera();
@@ -847,6 +900,7 @@ class TrainScene extends Scene {
         let offset = new Vector2();
         offset = offset.lerp(this.anticipatedStationOffset, data.door_t);
         context.translate(offset.x, offset.y);
+        this.cameraOffset = this.cameraOffset.add(offset);
       }
 
       this.drawTrack();
@@ -927,8 +981,25 @@ class TrainScene extends Scene {
       this.updateSound();
     }
 
+    if (subway.currentScene == this) {
+      mouse.confiner = this.getConfinerAtMouse(this.cameraOffset);
+      if (mouse.confiner) {
+        mouse.confinerScene = this;
+      } else if (this.linkedScene) {
+        mouse.confiner = this.linkedScene.getConfinerAtMouse(this.linkedScene.cameraOffset);
+        if (mouse.confiner) mouse.confinerScene = this.linkedScene;
+      }
+    } else if (subway.currentScene == this.linkedScene) {
+      if (!mouse.confiner) {
+        mouse.confiner = this.getConfinerAtMouse(this.cameraOffset);
+        if (mouse.confiner) mouse.confinerScene = this;
+      }
+    }
+
     this.updateThings(dt);
     this.confineThings(dt);
+
+    this.updateMouseInteraction();
   }
 
   updateThings(dt) {
@@ -957,17 +1028,18 @@ class TrainScene extends Scene {
           if (!this.audioIds.thisStop) {
             this.audioIds.thisStop = sounds.cannedvoice["this stop is"].play();
             sounds.cannedvoice["this stop is"].once("end", function() {
-              this.audioIds.stationName = sounds.cannedvoice[data.this_stop.name.replace(".", "")].play();
+              let stopname = this.train.currentData.this_stop.name.replace(".", "");
+              this.audioIds.stationName = sounds.cannedvoice[stopname].play();
 
-              sounds.cannedvoice[data.this_stop.name].once("end", function() {
+              sounds.cannedvoice[stopname].once("end", function() {
                 this.audioIds.station = sounds.cannedvoice["station"].play();
 
-                if (data.next_stop) {
+                if (this.train.currentData.next_stop) {
                   sounds.cannedvoice["station"].once("end", function() {
                     this.audioIds.nextStop = sounds.cannedvoice["the next stop is"].play();
 
                     sounds.cannedvoice["the next stop is"].once("end", function() {
-                      sounds.cannedvoice[data.next_stop.name].play();
+                      sounds.cannedvoice[this.train.currentData.next_stop.name.replace(".", "")].play();
                     }.bind(this), this.audioIds.nextStop);
                   }.bind(this), this.audioIds.station);
                 } else {

@@ -37,7 +37,6 @@
   <script type="text/javascript">
     var GAME_SCALE = 1/1.15;
 
-    // let gradient = context.createLinearGradient(-300, -600, 300, 600);
     var GRADIENT;
 
     const SHADOW_DEPTH = 10;
@@ -45,6 +44,8 @@
     const BACKGROUND_COLOR = "white";
     const LINES_COLOR = "black";
     const GROUP_LINES_COLOR = new RGBA(200,20,10,.3).toString();
+
+    const PLAYER_SPEED = 6;
 
     var STATION_NAMES = [];
     function restockStationNames() {
@@ -76,7 +77,7 @@
       sounds.sfx["train layer 3"].volume(0);
 
       sounds.ambience.heathrow.loop(true);
-      sounds.ambience.heathrow.volume(.5);
+      sounds.ambience.heathrow.volume(.7);
 
       window.onresize();
 
@@ -124,58 +125,8 @@
     }
 
     function createPlayer() {
-      player = new Passenger({
-        radius: 5,
-        speed: 10,
-        color: new RGBA(238,21,21),
-        avoidanceRadius: 20,
-        fill: true,
-        label: "you",
-        position: new Vector2(),
-      });
-      player.update = function(dt) {
-        let input = new Vector2();
-        if (keysdown["KeyW"] || keysdown["KeyZ"] || keysdown["ArrowUp"]) input.y--;
-        if (keysdown["KeyA"] || keysdown["KeyQ"] || keysdown["ArrowLeft"]) input.x--;
-        if (keysdown["KeyS"] || keysdown["ArrowDown"]) input.y++;
-        if (keysdown["KeyD"] || keysdown["ArrowRight"]) input.x++;
-        this.input = input;
-        this.direction = input.normalize();
-
-        if (!this.unpushable && this.avoidanceRadius > 0) {
-          this.direction = this.direction.add(
-            this.avoidPhysicalThings()
-            .mul(.3 * dt/10)
-          );
-        }
-
-        this.move(dt);
-
-        let prevInteracting = this.interacting;
-        this.interacting = keysdown["Space"];
-        if (!prevInteracting && this.interacting) {
-          this.interactingThisFrame = true;
-        } else {
-          this.interactingThisFrame = false;
-        }
-
-        // this.closestPackage = null;
-        // let closestPackageDistance = Infinity;
-        // for (let thing of this.scene.things) {
-        //   if (thing.tag == "package") {
-        //     if (circleRect(this.position, this.radius + this.avoidanceRadius, thing.position, thing.size)) {
-        //       let distance = this.position.distanceTo(thing.position.add(thing.size.div(2)));
-        //       if (distance < closestPackageDistance) {
-        //         closestPackageDistance = distance;
-        //         this.closestPackage = thing;
-        //       }
-        //     }
-        //   }
-        // }
-      }
-
-      player.exit();
-      player.enter(subway.currentScene);
+      player = new Passenger({ position: new Vector2() });
+      player.select();
     }
 
     function play() {
@@ -183,10 +134,8 @@
 
       init_inputs();
 
-      // sounds["dialogue-random"][0].play();
-
       createPlayer();
-      subway.time = 5 * 60 * 60 + 30;
+      subway.time = 5 * 60 * 60 + 60;
     }
   </script>
 </html>
