@@ -33,6 +33,7 @@
   <script type="text/javascript" src="js/things/interactable.js"></script>
   <script type="text/javascript" src="js/things/passenger.js"></script>
   <script type="text/javascript" src="js/things/package.js"></script>
+  <script type="text/javascript" src="js/things/ghost.js"></script>
   <script type="text/javascript" src="js/things/scene.js"></script>
   <script type="text/javascript">
     var GAME_SCALE = 1/1.15;
@@ -44,6 +45,7 @@
     const BACKGROUND_COLOR = "white";
     const LINES_COLOR = "black";
     const GROUP_LINES_COLOR = new RGBA(200,20,10,.3).toString();
+    const OGYGIA_COLOR = new RGBA(200,210,230).toString();
 
     const PLAYER_SPEED = 6;
 
@@ -110,14 +112,17 @@
       }
 
       for (let i=0; i<3; i++) {
-        new Package({ position: new Vector2(0, 200) });
+        new Package({ });
       }
+      let randomLine = subway.lines[subway.lines.length * Math.random() | 0];
+      let randomOgygia = randomLine.ogygia;
+      new Package({ recipientStation: randomOgygia })
 
       //
 
       animate();
       update();
-      document.getElementById("playprompt").innerHTML = "<p>this game has <b>sound</b>.<br><br><b>click</b> to move around.<br><br>click to begin.</p>";
+      document.getElementById("playprompt").innerHTML = "<p>this game has <b>sound</b>.<br><br><b>click</b> to move around.</p>";
       document.onmousedown = document.oncontextmenu = function(e) {
         e.preventDefault();
         play();
@@ -127,6 +132,8 @@
     function createPlayer() {
       player = new Passenger({ position: new Vector2() });
       player.select();
+
+      // new Ghost();
     }
 
     function play() {
@@ -135,7 +142,7 @@
       init_inputs();
 
       createPlayer();
-      subway.time = 5 * 60 * 60 + 60;
+      subway.time = 5 * 60 * 60 + 30;
     }
   </script>
 </html>

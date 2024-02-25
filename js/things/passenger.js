@@ -106,8 +106,7 @@ class Passenger extends PhysicalThing {
     if (this.dialogueId) this.drawSpeakingRadius();
   }
 
-  deselect() {
-    if (this == player) player = null;
+  resetPlayer() {
     this.colorOrigin = new RGBA();
     this.label = null;
     this.selected = false;
@@ -115,7 +114,18 @@ class Passenger extends PhysicalThing {
     this.playerDestination = null;
     this.playerDestinationScene = null;
     this.playerDestinationConfiner = null;
-    this.interacting = null;
+
+    if (this.interacting) {
+      this.interacting.onleave(this);
+      this.interacting.deselect();
+      this.interacting = null;
+    }
+
+    player = null;
+  }
+
+  deselect() {
+    this.resetPlayer();
   }
 
   select() {
@@ -162,11 +172,6 @@ class Passenger extends PhysicalThing {
       context.strokeStyle = context.fillStyle;
       context.stroke();
     }
-
-    // context.font = "13px sans-serif";
-    // context.textAlign = "center";
-    // context.textBaseline = "middle";
-    // context.fillText(this.icon, this.position.x, this.position.y);
 
     if (this.label) {
       context.font = "13px sans-serif";
@@ -489,7 +494,7 @@ class Passenger extends PhysicalThing {
 
     for (let thing of this.scene.things) {
       if (!thing.isPhysical || thing == this) continue;
-      if (player == this && !thing.radius) continue;
+      if (thing.linkedPassenger && thing.linkedPassenger != this) continue;
 
       let position;
       let radius;

@@ -7,14 +7,14 @@ class Trinket extends PhysicalThing {
 
   deselect() {
     this.linkedPassenger = null;
-    this.wantsToLinkTo = null;
+    player.wantsToLinkTo = null;
   }
 
   select() {
     if (this.linkedPassenger) {
       this.deselect();
     } else {
-      this.wantsToLinkTo = player;
+      player.wantsToLinkTo = this;
     }
   }
 
@@ -55,16 +55,16 @@ class Trinket extends PhysicalThing {
   }
 
   updateLink() {
-    if (this.wantsToLinkTo && this.wantsToLinkTo.scene == this.scene) {
+    if (player && player.wantsToLinkTo == this && player.scene == this.scene) {
       if (this.radius) {
-        if (this.position.distanceTo(this.wantsToLinkTo.position) <= this.radius + this.wantsToLinkTo.radius) {
-          this.linkedPassenger = this.wantsToLinkTo;
-          this.wantsToLinkTo = null;
+        if (this.position.distanceTo(player.position) <= this.radius + player.radius) {
+          this.linkedPassenger = player;
+          player.wantsToLinkTo = null;
         }
       } else {
-        if (circleRect(this.wantsToLinkTo.position, this.wantsToLinkTo.radius, this.position, this.size)) {
-          this.linkedPassenger = this.wantsToLinkTo;
-          this.wantsToLinkTo = null;
+        if (circleRect(player.position, player.radius, this.position, this.size)) {
+          this.linkedPassenger = player;
+          player.wantsToLinkTo = null;
         }
       }
     }
@@ -97,7 +97,7 @@ class Package extends Trinket {
 
     //
 
-    this.createRecipient();
+    this.createRecipient(p.recipientStation);
   }
 
   find() {
@@ -110,7 +110,7 @@ class Package extends Trinket {
     if (this.linkedPassenger) {
       this.deselect();
     } else {
-      this.wantsToLinkTo = player;
+      player.wantsToLinkTo = this;
     }
   }
 
@@ -128,7 +128,7 @@ class Package extends Trinket {
     this.updateInteractionState();
   }
 
-  createRecipient() {
+  createRecipient(station) {
     let ri = RECIPIENT_NAMES.length * Math.random() | 0;
     let recipientName = RECIPIENT_NAMES[ri];
     RECIPIENT_NAMES.splice(ri, 1);
@@ -137,14 +137,16 @@ class Package extends Trinket {
       restockRecipientNames();
     }
 
-    let randomStations = [];
-    for (let station of subway.stations) {
-      if (this.scene.station == station) continue;
-      randomStations.push(station);
+    if (!station) {
+      let randomStations = [];
+      for (let station of subway.stations) {
+        if (this.scene.station == station) continue;
+        randomStations.push(station);
+      }
+      station = randomStations[randomStations.length * Math.random() | 0];
     }
-    let randomStation = randomStations[randomStations.length * Math.random() | 0];
 
-    this.recipient = new Recipient({ scene: randomStation.scene, isTraveling: false });
+    this.recipient = new Recipient({ scene: station.scene, isTraveling: false });
     this.recipient.name = this.recipient.label = recipientName;
 
     this.recipient.package = this;
@@ -156,7 +158,7 @@ class Package extends Trinket {
     context.font = "11px sans-serif";
     context.textAlign = "left";
     context.textBaseline = "top";
-    let measurements = context.measureText("This is a package for:");
+    let measurements = context.measureText("Wherever they may be");
     let lineHeight = measurements.fontBoundingBoxDescent + 5;
 
     this.lineHeight = lineHeight;
@@ -180,8 +182,8 @@ class Package extends Trinket {
     context.rect(this.position.x, this.position.y, this.size.x, this.size.y);
     context.stroke();
 
-    if (this.wantsToLinkTo) {
-      context.fillStyle = this.wantsToLinkTo.color.toString();
+    if (player.wantsToLinkTo == this) {
+      context.fillStyle = player.color.toString();
       context.fill();
     }
   }
@@ -229,9 +231,16 @@ class Package extends Trinket {
 
     y += this.lineHeight;
 
+    let thirdline;
+
     let stationName = this.recipient.scene.station.name;
-    stationName = stationName[0].toUpperCase() + stationName.substring(1);
-    context.fillText("@ "+stationName+" Station", x, y);
+    if (stationName) {
+      stationName = stationName[0].toUpperCase() + stationName.substring(1);
+      thirdline = "@ "+stationName+" Station";
+    } else {
+      thirdline = "Wherever they may be"
+    }
+    context.fillText(thirdline, x, y);
   }
 }
 
@@ -241,21 +250,11 @@ class Recipient extends Passenger {
   }
 
   deselect() {
-    // copied from passenger
-
-    if (this == player) player = null;
-    this.colorOrigin = new RGBA();
-    this.label = null;
-    this.selected = false;
-
-    this.playerDestination = null;
-    this.playerDestinationScene = null;
-    this.playerDestinationConfiner = null;
-    this.interacting = null;
+    this.resetPlayer();
 
     // new
 
-    this.label = this.name;
+    if (this.package) this.label = this.name;
   }
 
   setDestination() {
@@ -317,6 +316,7 @@ class Recipient extends Passenger {
 
     this.package.exit();
     this.package = null;
+    this.label = null;
   }
 }
 
@@ -339,8 +339,8 @@ class Coin extends Trinket {
     context.beginPath();
     context.arc(this.position.x, this.position.y, this.radius, 0, TWOPI);
     context.stroke();
-    if (this.wantsToLinkTo) {
-      context.fillStyle = this.wantsToLinkTo.color.toString();
+    if (player.wantsToLinkTo == this) {
+      context.fillStyle = player.color.toString();
       context.fill();
     }
 

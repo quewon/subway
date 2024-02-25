@@ -35,6 +35,8 @@ class Thing {
   }
 
   mouseCollides() {
+    if (this == player) return false;
+
     let m = mouse.gamePosition;
 
     if (

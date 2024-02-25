@@ -22,7 +22,7 @@ class Interactable extends Thing {
 
   deselect() {
     this.selected = false;
-    player.interacting = null;
+    if (player.interacting == this) player.interacting = null;
   }
 
   select() {
@@ -106,6 +106,12 @@ class Interactable extends Thing {
             this.deselect();
           }
         }
+      }
+    } else {
+      if (this.active) {
+        this.active = false;
+        this.onleave(player);
+        this.deselect();
       }
     }
 

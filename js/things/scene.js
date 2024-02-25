@@ -723,7 +723,7 @@ class OgygiaScene extends StationScene {
     super(ogygia);
 
     for (let confiner of this.confiners) {
-      confiner.wallColor = new RGBA(200,210,230).toString();
+      confiner.wallColor = OGYGIA_COLOR;
     }
   }
 
@@ -1046,7 +1046,7 @@ class TrainScene extends Scene {
         delete this.audioIds.doorsClosing;
 
         if (data.t > .9) {
-          if (!this.audioIds.thisStop) {
+          if (!this.audioIds.thisStop && this.train.currentData.this_stop) {
             this.audioIds.thisStop = sounds.cannedvoice["this stop is"].play();
             sounds.cannedvoice["this stop is"].once("end", function() {
               let stopname = this.train.currentData.this_stop.name.replace(".", "");
@@ -1064,7 +1064,9 @@ class TrainScene extends Scene {
                     }.bind(this), this.audioIds.nextStop);
                   }.bind(this), this.audioIds.station);
                 } else {
-                  sounds.cannedvoice["this is the final stop"].play();
+                  sounds.cannedvoice["station"].once("end", function() {
+                    sounds.cannedvoice["this is the final stop"].play();
+                  }.bind(this), this.audioIds.station);
                 }
               }.bind(this), this.audioIds.stationName);
             }.bind(this), this.audioIds.thisStop);
