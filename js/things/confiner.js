@@ -131,11 +131,7 @@ class RectConfiner {
   }
 
   containsMouse(offset) {
-    let m = mouse.gamePosition.sub(offset);
-    if (m.x >= this.position.x && m.y >= this.position.y && m.x <= this.position.x + this.size.x && m.y <= this.position.y + this.size.y) {
-      return true;
-    }
-    return false;
+    return pointInRect(mouse.gamePosition.sub(offset), this.position, this.size);
   }
 }
 
@@ -237,8 +233,7 @@ class CircleConfiner {
   }
 
   containsMouse(offset) {
-    let m = mouse.gamePosition.sub(offset);
-    return pointInCircle(m, this.position, this.radius);
+    return pointInCircle(mouse.gamePosition.sub(offset), this.position, this.radius);
   }
 }
 

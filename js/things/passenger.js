@@ -71,13 +71,16 @@ class Passenger extends PhysicalThing {
     if (player && player == this) {
       if (this.playerDestination && this.playerDestinationConfiner && !this.interacting) {
         let p = this.playerDestination;
-        if (this.scene != this.playerDestinationScene) {
-          if (this.scene.tag == "train") {
-            p = p.sub(this.scene.cameraOffset);
-          } else {
-            p = p.add(this.playerDestinationScene.cameraOffset);
-          }
+        p = p.sub(this.scene.cameraOffset);
+
+        let scene = this.playerDestinationScene;
+        if (
+          scene.tag == "train" && scene.linkedScene == this.scene.linkedScene ||
+          scene.tag == "train" && scene.linkedScene == this.scene
+        ) {
+          p = p.add(scene.cameraOffset);
         }
+        
         context.strokeStyle = GROUP_LINES_COLOR;
         context.beginPath();
         context.arc(p.x, p.y, this.radius + this.avoidanceRadius, 0, TWOPI);

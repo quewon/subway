@@ -39,16 +39,22 @@ class Thing {
 
     if (
       subway.currentScene == this.scene ||
-      this.scene.tag == "train" && this.scene.linkedScene == subway.currentScene ||
-      this.scene.tag == "station" && subway.currentScene.tag == "train" && subway.currentScene.linkedScene == this.scene
+      this.scene.tag == "train"   && subway.currentScene.tag == "station" && this.scene.linkedScene == subway.currentScene ||
+      this.scene.tag == "station" && subway.currentScene.tag == "train"   && subway.currentScene.linkedScene == this.scene ||
+      this.scene.tag == "train"   && subway.currentScene.tag == "train"   && subway.currentScene.linkedScene == this.scene.linkedScene
     ) {
-      m = m.sub(this.scene.cameraOffset);
-
-      if (this.scene.tag == "train" && this.scene.linkedScene == subway.currentScene) {
-        
-      }
+      
     } else {
       return false;
+    }
+
+    if (this.scene.tag == "train" && this.scene.linkedScene) {
+      let stationScene = this.scene.linkedScene;
+      m = m.sub(stationScene.cameraOffset).sub(this.scene.cameraOffset);
+    } else if (this.scene.tag == "station") {
+      m = m.sub(this.scene.cameraOffset);
+    } else if (this.scene.tag == "train") {
+      m = m.sub(this.scene.cameraOffset);
     }
 
     if (this.radius) {

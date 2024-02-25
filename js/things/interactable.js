@@ -35,7 +35,7 @@ class Interactable extends Thing {
       for (let confiner of this.scene.confiners) {
         if (
           confiner.radius && circleRect(confiner.position, confiner.radius, this.position, this.size) ||
-          rectRect(confiner.position, confiner.size, this.position, this.size)
+          !confiner.radius && rectRect(confiner.position, confiner.size, this.position, this.size)
         ) {
           this.confiner = confiner;
           break;
@@ -43,8 +43,6 @@ class Interactable extends Thing {
       }
     }
     player.playerDestinationConfiner = this.confiner;
-
-    console.log("set confiner 1");
   }
  
   drawBox() {
@@ -66,7 +64,7 @@ class Interactable extends Thing {
   }
 
   drawPrompt() {
-    if (player && player.scene == this.scene && this.hoveringPassengers.indexOf(player) != -1) {
+    if (this.hover) {
       context.fillStyle = LINES_COLOR;
       context.font = "13px sans-serif";
       context.textAlign = "center";
@@ -74,10 +72,10 @@ class Interactable extends Thing {
 
       context.strokeStyle = BACKGROUND_COLOR;
       context.lineWidth = 3;
-      context.strokeText("[space] "+this.promptText, this.position.x + this.size.x/2, this.position.y);
+      context.strokeText(this.promptText, this.position.x + this.size.x/2, this.position.y);
       context.lineWidth = 1;
 
-      context.fillText("[space] "+this.promptText, this.position.x + this.size.x/2, this.position.y);
+      context.fillText(this.promptText, this.position.x + this.size.x/2, this.position.y);
     }
   }
 
@@ -93,18 +91,20 @@ class Interactable extends Thing {
   updateState() {
     this.hover = this.mouseCollides();
 
-    if (mouse.downThisFrame) {
-      if (!this.hover && player.interacting == this) {
-        this.deselect();
-      }
-
-      if (this.active) {
-        if (this.isToggle && player.interacting == this) {
-          this.oninteract(player);
-        } else {
-          this.active = false;
-          this.onleave(player);
+    if (player && player.interacting == this) {
+      if (mouse.downThisFrame) {
+        if (!this.hover) {
           this.deselect();
+        }
+  
+        if (this.active) {
+          if (this.isToggle && this.hover) {
+            this.oninteract(player);
+          } else {
+            this.active = false;
+            this.onleave(player);
+            this.deselect();
+          }
         }
       }
     }
@@ -461,14 +461,10 @@ class LightSwitch extends Interactable {
     context.fillStyle = context.strokeStyle = this.color.toString();
     context.beginPath();
     context.rect(this.position.x, this.position.y, this.size.x, this.size.y);
-    if (document.body.classList.contains("dark")) {
+    if (this.hover || this.active || document.body.classList.contains("dark")) {
       context.fill();
     } else {
       context.stroke();
-    }
-
-    if (this.selected) {
-      context.fill();
     }
   }
 
