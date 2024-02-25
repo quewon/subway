@@ -38,6 +38,12 @@ class Thing {
     let m = mouse.gamePosition;
 
     if (
+      this.scene != subway.currentScene && 
+      this.scene.tag == "train" && subway.currentScene.tag == "train" && 
+      !subway.currentScene.train.currentData.doors_open
+    ) return;
+
+    if (
       subway.currentScene == this.scene ||
       this.scene.tag == "train"   && subway.currentScene.tag == "station" && this.scene.linkedScene == subway.currentScene ||
       this.scene.tag == "station" && subway.currentScene.tag == "train"   && subway.currentScene.linkedScene == this.scene ||
@@ -92,11 +98,11 @@ class PhysicalThing extends Thing {
     this.group = p.group || null;
 
     this.speed = p.speed == null ? 2 + Math.random() * 4 : p.speed;
-    this.direction = new Vector2();
-    this.velocity = new Vector2();
-    this.weight = 1;
-    this.frictionFactor = 1.1;
-    this.unpushable = false;
+    this.direction = p.direction || new Vector2();
+    this.velocity = p.velocity || new Vector2();
+    this.weight = p.weight || 1;
+    this.frictionFactor = p.frictionFactor || 1.1;
+    this.unpushable = p.unpushable || false;
     this.collisionsCounter = 0;
   }
 

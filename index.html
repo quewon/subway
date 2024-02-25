@@ -53,11 +53,11 @@
     }
     restockStationNames();
 
-    // var RECIPIENT_NAMES = [];
-    // function restockRecipientNames() {
-    //   RECIPIENT_NAMES = ["jip", "ib", "goa", "sin", "sun", "aba"];
-    // }
-    // restockRecipientNames();
+    var RECIPIENT_NAMES = [];
+    function restockRecipientNames() {
+      RECIPIENT_NAMES = ["jip", "ib", "goa", "sin", "sun", "aba"];
+    }
+    restockRecipientNames();
 
     var player;
     var subway;
@@ -109,15 +109,15 @@
         }
       }
 
-      // for (let i=0; i<3; i++) {
-      //   new Package({ position: new Vector2(0, 200) });
-      // }
+      for (let i=0; i<3; i++) {
+        new Package({ position: new Vector2(0, 200) });
+      }
 
       //
 
       animate();
       update();
-      document.getElementById("playprompt").innerHTML = "<p><b>sound</b> is important here.<br><br><b>click</b> to move around.<br><br>click to begin.</p>";
+      document.getElementById("playprompt").innerHTML = "<p>this game has <b>sound</b>.<br><br><b>click</b> to move around.<br><br>click to begin.</p>";
       document.onmousedown = document.oncontextmenu = function(e) {
         e.preventDefault();
         play();

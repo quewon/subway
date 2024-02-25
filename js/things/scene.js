@@ -507,10 +507,10 @@ class StationScene extends Scene {
     this.drawTrainsThings();
     this.drawThings();
 
-    if (subway.currentScene == this) {
+    if (mouse.confinerScene == this) {
       for (let i=0; i<this.platformConfiners.length; i++) {
         let platform = this.platformConfiners[i];
-        if (platform.thingConfined(player)) {
+        if (mouse.confiner == platform) {
           let line = this.station.lines[i];
           this.drawPlatformInfo(platform, line, 1);
           this.drawPlatformInfo(platform, line, -1);

@@ -64,7 +64,7 @@ class Interactable extends Thing {
   }
 
   drawPrompt() {
-    if (this.hover) {
+    if (this.selected || this.hover) {
       context.fillStyle = LINES_COLOR;
       context.font = "13px sans-serif";
       context.textAlign = "center";
@@ -441,12 +441,6 @@ class TrainTracker extends Interactable {
   }
 }
 
-class VendingMachine extends Interactable {
-  constructor() {
-
-  }
-}
-
 class LightSwitch extends Interactable {
   constructor(p) {
     p.size = new Vector2(10, 30);
@@ -461,7 +455,7 @@ class LightSwitch extends Interactable {
     context.fillStyle = context.strokeStyle = this.color.toString();
     context.beginPath();
     context.rect(this.position.x, this.position.y, this.size.x, this.size.y);
-    if (this.hover || this.active || document.body.classList.contains("dark")) {
+    if (this.hover || this.selected || document.body.classList.contains("dark")) {
       context.fill();
     } else {
       context.stroke();

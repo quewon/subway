@@ -12,7 +12,7 @@ var soundslist = {
     "doors closing",
     "this is the final stop"
   ],
-  "dialogue/stranger/solo": 0
+  // "dialogue": 64
 }
 function load_sounds(onload) {
   console.log("loading sounds...");
@@ -37,15 +37,6 @@ function load_sounds(onload) {
           }
         });
 
-        // let sound = new Audio();
-        // sound.src = "assets/sounds/"+folder+"/"+filename+".wav";
-        // sound.oncanplaythrough = function() {
-        //   soundsToLoad--;
-        //   if (soundsToLoad <= 0) {
-        //     onload();
-        //   }
-        //   this.oncanplaythrough = null;
-        // };
         sounds[folder][filename] = sound;
       }
     } else {
@@ -54,7 +45,7 @@ function load_sounds(onload) {
         soundsToLoad++;
 
         let sound = new Howl({
-          src: ["assets/sounds/"+folder+"/"+i+".m4a"]
+          src: ["assets/sounds/"+folder+"/"+i+".wav"]
         });
         sound.once('load', function() {
           soundsToLoad--;
@@ -63,15 +54,6 @@ function load_sounds(onload) {
           }
         });
 
-        // let sound = new Audio();
-        // sound.src = "assets/sounds/"+folder+"/"+i+".wav";
-        // sound.oncanplaythrough = function() {
-        //   soundsToLoad--;
-        //   if (soundsToLoad <= 0) {
-        //     onload();
-        //   }
-        //   this.oncanplaythrough = null;
-        // }
         sounds[folder].push(sound);
       }
     }

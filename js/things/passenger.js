@@ -13,7 +13,7 @@ class Passenger extends PhysicalThing {
     if (Math.random() > .5) {
       this.speakingRadius = 50;
       this.volumeRadius = 150;
-      this.dialogueHowl = sounds["dialogue/stranger/solo"][sounds["dialogue/stranger/solo"].length * Math.random() | 0];
+      // this.dialogueHowl = sounds["dialogue"][sounds["dialogue"].length * Math.random() | 0];
     }
 
     this.routePreference = Math.random() > .5 ? "simple" : "short";
@@ -80,7 +80,7 @@ class Passenger extends PhysicalThing {
         ) {
           p = p.add(scene.cameraOffset);
         }
-        
+
         context.strokeStyle = GROUP_LINES_COLOR;
         context.beginPath();
         context.arc(p.x, p.y, this.radius + this.avoidanceRadius, 0, TWOPI);
@@ -308,7 +308,7 @@ class Passenger extends PhysicalThing {
   stopSpeaking() {
     if (!this.dialogueId) return;
 
-    this.dialogueHowl.stop(this.dialogueId);
+    this.dialogueHowl.pause(this.dialogueId);
     this.dialogueId = null;
   }
 
