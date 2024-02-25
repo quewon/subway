@@ -133,7 +133,7 @@ class Scene {
     if (subway.currentScene != this && subway.currentScene != this.linkedScene) return;
 
     let m = mouse.gamePosition.sub(mouse.confinerScene.cameraOffset);
-    if (player && m.distanceTo(player.position) >= player.avoidanceRadius && mouse.down) {
+    if (player && m.distanceTo(player.position) >= player.avoidanceRadius && mouse.down && !player.interacting) {
       let scene = mouse.confinerScene;
 
       player.playerDestination = m;
@@ -445,6 +445,7 @@ class StationScene extends Scene {
         mouse.confinerScene = this;
       } else {
         for (let info of this.trainsHere) {
+          if (!info.data.doors_open) continue;
           mouse.confiner = info.scene.getConfinerAtMouse();
           if (mouse.confiner) {
             mouse.confinerScene = info.scene;

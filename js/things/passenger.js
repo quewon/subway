@@ -68,6 +68,31 @@ class Passenger extends PhysicalThing {
   }
 
   draw() {
+    if (player && player == this) {
+      if (this.playerDestination && this.playerDestinationConfiner && !this.interacting) {
+        let p = this.playerDestination;
+        if (this.scene != this.playerDestinationScene) {
+          if (this.scene.tag == "train") {
+            p = p.sub(this.scene.cameraOffset);
+          } else {
+            p = p.add(this.playerDestinationScene.cameraOffset);
+          }
+        }
+        context.strokeStyle = GROUP_LINES_COLOR;
+        context.beginPath();
+        context.arc(p.x, p.y, this.radius + this.avoidanceRadius, 0, TWOPI);
+        context.stroke();
+      }
+      
+      let p = mouse.gamePosition.sub(this.scene.cameraOffset);
+      context.strokeStyle = "rgba(0,0,0,.3)";
+      context.beginPath();
+      context.arc(p.x, p.y, this.radius + this.avoidanceRadius, 0, TWOPI);
+      context.setLineDash([3]);
+      context.stroke();
+      context.setLineDash([]);
+    }
+
     this.drawSelf();
     this.drawAvoidanceRadius();
 
@@ -76,23 +101,6 @@ class Passenger extends PhysicalThing {
     }
 
     if (this.dialogueId) this.drawSpeakingRadius();
-
-    if (this.playerDestination && this.playerDestinationConfiner) {
-      let p = this.playerDestination;
-
-      if (this.scene != this.playerDestinationScene) {
-        if (this.scene.tag == "train") {
-          p = p.sub(this.scene.cameraOffset);
-        } else {
-          p = p.add(this.playerDestinationScene.cameraOffset);
-        }
-      }
-
-      context.fillStyle = "red";
-      context.beginPath();
-      context.arc(p.x, p.y, 5, 0, TWOPI);
-      context.fill();
-    }
   }
 
   deselect() {
@@ -104,6 +112,7 @@ class Passenger extends PhysicalThing {
     this.playerDestination = null;
     this.playerDestinationScene = null;
     this.playerDestinationConfiner = null;
+    this.interacting = null;
   }
 
   select() {
@@ -386,11 +395,8 @@ class Passenger extends PhysicalThing {
             }
           } else {
             this.aimForHallCenter = true;
-            if (this.position.y > 0) {
-              direction = new Vector2(0, -1);
-            } else {
-              direction = new Vector2(0, 1);
-            }
+            let confinerCenter = confiner.position.add(confiner.size.div(2));
+            direction = new Vector2(0, Math.sign(-confinerCenter.y));
           }
         } else { //bridge
           let platformCenter = platform.position.add(platform.size.div(2));
@@ -401,22 +407,23 @@ class Passenger extends PhysicalThing {
         }
       }
     } else if (destination && this.playerDestinationConfiner) {
-      if (this.previousConfiner == this.playerDestinationConfiner) {
+      let confiner = this.previousConfiner;
+      let dconfiner = this.playerDestinationConfiner;
+
+      if (confiner == dconfiner) {
         direction = destination.sub(this.position);
 
-        if (this.position.distanceTo(destination) < this.avoidanceRadius) {
+        if (this.position.distanceTo(destination) <= this.radius) {
           this.playerDestination = null;
           this.playerDestinationScene = null;
           this.playerDestinationConfiner = null;
         }
       } else {
-        if (this.scene.tag == "station") {
-          let platform = this.playerDestinationConfiner;
-  
-          let confiner = this.previousConfiner;
+        if (this.scene.tag == "station" && dconfiner) {
           if (confiner.isHall) {
             let hall = confiner;
             let hallCenter = hall.position;
+
             if (this.aimForHallCenter) {
               let hallRadius;
               if (hall.radius) {
@@ -432,10 +439,13 @@ class Passenger extends PhysicalThing {
   
               direction = hallCenter.sub(this.position);
             } else {
-              let platformCenter = platform.position.add(platform.size.div(2));
-              let distance = platformCenter.sub(this.position);
-  
-              if (Math.abs(distance.x) > platform.size.x) {
+              let center = dconfiner.position;
+              if (!dconfiner.radius) {
+                center = center.add(dconfiner.size.div(2));
+              }
+              let distance = center.sub(this.position);
+
+              if (dconfiner.isPlatform && Math.abs(distance.x) > dconfiner.size.x) {
                 direction = new Vector2(distance.x, hallCenter.y - this.position.y);
               } else {
                 direction = distance;
@@ -443,14 +453,23 @@ class Passenger extends PhysicalThing {
             }
           } else if (confiner.isPlatform) {
             this.aimForHallCenter = true;
-            if (this.position.y > 0) {
-              direction = new Vector2(0, -1);
-            } else {
-              direction = new Vector2(0, 1);
+
+            if (dconfiner.isHall) {
+              if (dconfiner.radius) {
+                this.aimForHallCenter = !circleRect(dconfiner.position, dconfiner.radius, confiner.position, confiner.size);
+              } else {
+                this.aimForHallCenter = !rectRect(confiner.position, confiner.size, dconfiner.position, dconfiner.size);
+              }
             }
+
+            let confinerCenter = confiner.position.add(confiner.size.div(2));
+            direction = new Vector2(0, Math.sign(-confinerCenter.y));
           } else { //bridge
-            let platformCenter = platform.position.add(platform.size.div(2));
-            direction = platformCenter.sub(this.position);
+            let center = dconfiner.position;
+            if (!dconfiner.radius) {
+              center = center.add(dconfiner.size.div(2));
+            }
+            direction = center.sub(this.position);
             direction = new Vector2(direction.x, 0);
   
             this.aimForHallCenter = true;
@@ -645,11 +664,8 @@ class Passenger extends PhysicalThing {
 
             this.aimForHallCenter = true;
 
-            if (this.position.y > 0) {
-              return new Vector2(0, -1);
-            } else {
-              return new Vector2(0, 1);
-            }
+            let confinerCenter = this.previousConfiner.position.add(this.previousConfiner.size.div(2));
+            direction = new Vector2(0, Math.sign(-confinerCenter.y));
           } else if (!inPlatform) {
             let hall = this.previousConfiner;
 

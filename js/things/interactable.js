@@ -11,8 +11,7 @@ class Interactable extends Thing {
     this.position = this.position.sub(new Vector2(this.size.x/2, this.size.y/2));
 
     this.hover = false;
-    this.active = false;
-    this.toggled = false;
+    this.selected = false;
     this.hoveringPassengers = [];
     this.interactingPassengers = [];
   }
@@ -21,11 +20,38 @@ class Interactable extends Thing {
     this.drawBox();
   }
 
+  deselect() {
+    this.selected = false;
+    player.interacting = null;
+  }
+
+  select() {
+    if (player.interacting) player.interacting.deselect();
+    this.selected = true;
+    player.interacting = this;
+    player.playerDestination = this.position.add(this.size.div(2));
+    player.playerDestinationScene = this.scene;
+    if (!this.confiner) {
+      for (let confiner of this.scene.confiners) {
+        if (
+          confiner.radius && circleRect(confiner.position, confiner.radius, this.position, this.size) ||
+          rectRect(confiner.position, confiner.size, this.position, this.size)
+        ) {
+          this.confiner = confiner;
+          break;
+        }
+      }
+    }
+    player.playerDestinationConfiner = this.confiner;
+
+    console.log("set confiner 1");
+  }
+ 
   drawBox() {
     context.fillStyle = context.strokeStyle = this.color.toString();
     context.beginPath();
     context.rect(this.position.x, this.position.y, this.size.x, this.size.y);
-    if (this.toggled) {
+    if (this.hovered || this.selected) {
       context.fill();
     } else {
       context.stroke();
@@ -60,57 +86,48 @@ class Interactable extends Thing {
   }
 
   update(dt) {
+    this.updateInteractionState();
     this.updateState();
   }
 
   updateState() {
-    this.hover = false;
-    this.active = false;
+    this.hover = this.mouseCollides();
 
-    for (let passenger of this.scene.things) {
-      if (passenger.tag != "passenger") continue;
+    if (mouse.downThisFrame) {
+      if (!this.hover && player.interacting == this) {
+        this.deselect();
+      }
 
+      if (this.active) {
+        if (this.isToggle && player.interacting == this) {
+          this.oninteract(player);
+        } else {
+          this.active = false;
+          this.onleave(player);
+          this.deselect();
+        }
+      }
+    }
+
+    if (player && player.interacting == this && player.scene == this.scene) {
       let margin = new Vector2(2, 2);
-      let collides = circleRect(passenger.position, passenger.radius, this.position.sub(new Vector2(margin.x/2, margin.y/2)), this.size.add(margin));
-      let index = this.hoveringPassengers.indexOf(passenger);
-
+      let collides = circleRect(player.position, player.radius, this.position.sub(new Vector2(margin.x/2, margin.y/2)), this.size.add(margin));
+      
       if (collides) {
-        this.hover = true;
-        if (index == -1) {
-          this.hoveringPassengers.push(passenger);
-          this.onhover(passenger);
-        }
-
-        let interactIndex = this.interactingPassengers.indexOf(passenger);
-        if (passenger.interacting) {
+        if (!this.active) {
           this.active = true;
-          if (interactIndex == -1) {
-            this.interactingPassengers.push(passenger);
-            this.toggled = !this.toggled;
-            this.oninteract(passenger);
-          }
-        } else if (interactIndex != -1) {
-          this.interactingPassengers.splice(interactIndex, 1);
-          this.onuninteract(passenger);
+          this.oninteract(player);
         }
-      } else if (index != -1) {
-        this.hoveringPassengers.splice(index, 1);
-        this.toggled = false;
-        this.onleave(passenger);
-
-        let interactIndex = this.interactingPassengers.indexOf(passenger);
-        if (interactIndex != -1) {
-          this.interactingPassengers.splice(interactIndex, 1);
-          this.onuninteract(passenger);
-        }
+      } else if (this.active) {
+        this.active = false;
+        this.onleave(player);
+        this.deselect();
       }
     }
   }
 
-  onhover(passenger) { }
   onleave(passenger) { }
   oninteract(passenger) { }
-  onuninteract(passenger) { }
 }
 
 class Map extends Interactable {
@@ -128,19 +145,12 @@ class Map extends Interactable {
 
   draw() {
     this.drawBox();
-    if (!this.toggled) this.drawIcon();
+    this.drawIcon();
   }
 
   oninteract(passenger) {
-    if (passenger == player) {
-      if (subway.mapOpen) {
-        subway.closeMap();
-        passenger.unpushable = false;
-      } else {
-        subway.openMap();
-        passenger.unpushable = true;
-      }
-    }
+    subway.openMap();
+    passenger.unpushable = true;
   }
 
   onleave(passenger) {
@@ -209,7 +219,7 @@ class LineMap extends Interactable {
 
   draw() {
     this.drawBox();
-    if (!this.toggled) this.drawIcon();
+    this.drawIcon();
   }
 
   drawUI() {
@@ -270,33 +280,27 @@ class LineMap extends Interactable {
   }
 
   update(dt) {
+    this.updateInteractionState();
     this.updateState();
     this.updateMap(dt);
   }
 
   updateMap(dt) {
-    if (this.toggled) {
+    if (this.active) {
       this.timer += dt/1000 * 1.5;
       if (this.timer > .5) this.timer = .5;
     } else if (this.timer > 0) {
       this.timer -= dt/1000 * 3;
+      if (this.timer < 0) this.timer = 0;
     }
   }
 
   oninteract(passenger) {
-    if (passenger == player) {
-      if (subway.toggled) {
-        passenger.unpushable = false;
-      } else {
-        passenger.unpushable = true;
-      }
-    }
+    passenger.unpushable = true;
   }
 
   onleave(passenger) {
-    if (passenger == player && subway.toggled) {
-      passenger.unpushable = false;
-    }
+    passenger.unpushable = false;
   }
 }
 
@@ -342,12 +346,12 @@ class TrainTracker extends Interactable {
 
   draw() {
     this.drawBox();
-    if (!this.toggled) this.drawIcon();
+    this.drawIcon();
   }
 
   drawUI() {
     this.drawPrompt();
-    if (this.toggled) this.drawTracker();
+    if (this.active) this.drawTracker();
   }
 
   drawTracker() {
@@ -429,15 +433,11 @@ class TrainTracker extends Interactable {
   }
 
   oninteract(passenger) {
-    if (passenger == player) {
-      passenger.unpushable = this.toggled;
-    }
+    passenger.unpushable = true;
   }
 
   onleave(passenger) {
-    if (passenger == player) {
-      passenger.unpushable = false;
-    }
+    passenger.unpushable = false;
   }
 }
 
@@ -454,6 +454,7 @@ class LightSwitch extends Interactable {
 
     this.color = new RGBA();
     this.promptText = "light switch";
+    this.isToggle = true;
   }
 
   drawBox() {
@@ -464,6 +465,10 @@ class LightSwitch extends Interactable {
       context.fill();
     } else {
       context.stroke();
+    }
+
+    if (this.selected) {
+      context.fill();
     }
   }
 

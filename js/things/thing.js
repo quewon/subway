@@ -25,9 +25,10 @@ class Thing {
 
     if (this.mouseCollides()) {
       document.body.classList.add("pointer");
+      
       this.hovered = true;
 
-      if (mouse.down && !this.selected) {
+      if (mouse.downThisFrame && !this.selected) {
         this.select();
       }
     }
@@ -36,10 +37,16 @@ class Thing {
   mouseCollides() {
     let m = mouse.gamePosition;
 
-    if (subway.currentScene == this.scene) {
+    if (
+      subway.currentScene == this.scene ||
+      this.scene.tag == "train" && this.scene.linkedScene == subway.currentScene ||
+      this.scene.tag == "station" && subway.currentScene.tag == "train" && subway.currentScene.linkedScene == this.scene
+    ) {
       m = m.sub(this.scene.cameraOffset);
-    } else if (subway.currentScene.linkedScene == this.scene) {
-      m = m.sub(subway.currentScene.linkedScene.cameraOffset);
+
+      if (this.scene.tag == "train" && this.scene.linkedScene == subway.currentScene) {
+        
+      }
     } else {
       return false;
     }
@@ -53,9 +60,6 @@ class Thing {
 
   select() {
     this.selected = true;
-  }
-  deselect() {
-    this.selected = false;
   }
 
   exit() {

@@ -5,7 +5,7 @@ const notebook = document.getElementById("notebook");
 const noteContext = notebook.getContext("2d");
 
 function animate() {
-  document.body.className = "";
+  document.body.classList.remove("pointer");
 
   context.lineCap = "round";
 
@@ -33,6 +33,8 @@ function update() {
   if (subway) subway.update(dt);
 
   previousTime = now;
+
+  mouse.downThisFrame = false;
 
   requestAnimationFrame(update);
 }
@@ -64,7 +66,7 @@ window.onresize = function() {
 }
 
 var keysdown = {};
-var mouse = { down: false, rightdown: false, gamePosition: new Vector2() };
+var mouse = { down: false, downThisFrame: false, rightdown: false, gamePosition: new Vector2() };
 
 function init_inputs() {
   document.onkeydown = function(e) {
@@ -85,6 +87,7 @@ function init_inputs() {
     let y = e.pageY * window.devicePixelRatio;
 
     mouse.down = true;
+    mouse.downThisFrame = true;
     mouse.prevPoint = new Vector2(x, y);
   }
   document.oncontextmenu = function(e) {
