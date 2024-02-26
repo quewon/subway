@@ -108,6 +108,10 @@
             new Group(array);
           }
         }
+
+        if (Math.random() > .5) {
+          new Ghost({ scene: station.scene });
+        }
       }
 
       for (let i=0; i<3; i++) {
@@ -131,9 +135,6 @@
     function createPlayer() {
       player = new Passenger({ position: new Vector2() });
       player.select();
-
-      // new Ghost({ scene: subway.homebase });
-      new Ghost();
     }
 
     function play() {
