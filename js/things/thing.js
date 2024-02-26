@@ -156,12 +156,36 @@ class PhysicalThing extends Thing {
   }
 
   move(dt) {
-    this.velocity = this.velocity.div(this.frictionFactor);
-    if (this == player) {
-      this.velocity = this.velocity.add(this.direction.mul(PLAYER_SPEED * dt/1000));
-    } else {
-      this.velocity = this.velocity.add(this.direction.mul(this.speed * dt/1000));
+    if (this.ghost) {
+      let contained = false;
+      if (this.radius) {
+        contained = this.position.distanceTo(this.ghost.position) <= this.ghost.radius - this.radius;
+      } else if (this.size) {
+        let position = this.position;
+        let points = [
+          position,
+          position.add(new Vector2(this.size.x, 0)),
+          position.add(this.size),
+          position.add(new Vector2(0, this.size.y))
+        ];
+        for (let point of points) {
+          if (!pointInCircle(point, this.position, this.radius)) {
+            contained = false;
+            break;
+          } else {
+            contained = true;
+          }
+        }
+      }
+      if (!contained) {
+        let center = this.position;
+        if (this.size) center = center.add(this.size.div(2));
+        this.direction = this.ghost.position.sub(center).normalize();
+      }
     }
+
+    this.velocity = this.velocity.div(this.frictionFactor);
+    this.velocity = this.velocity.add(this.direction.mul(this.speed * dt/1000));
     this.position = this.position.add(this.velocity);
 
     if (!this.unpushable) this.collideWithThings(dt);

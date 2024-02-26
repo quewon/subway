@@ -22,10 +22,10 @@ class Subway {
     this.mapTimer = 0;
 
     // this.homebase = this.getLargestStation().scene;
-    this.homebase = this.lines[0].trains[0].scene;
-    // this.homebase = this.lines[0].stations[0].scene;
+    // this.homebase = this.lines[0].trains[0].scene;
+    this.homebase = this.lines[0].stations[0].scene;
     // this.homebase = this.lines[0].ogygia.scene;
-    this.currentScene = this.homebase;
+    this.currentScene = this.lines[0].trains[0].scene;
   }
 
   setScene(scene) {

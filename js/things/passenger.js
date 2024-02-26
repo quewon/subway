@@ -52,6 +52,10 @@ class Passenger extends PhysicalThing {
   enter(scene) {
     if (scene == this.scene) return;
 
+    if (this.ghost && scene != this.ghost.scene) {
+      this.ghost.uneat(this);
+    }
+
     this.scene = scene;
     this.scene.things.push(this);
 
@@ -81,7 +85,7 @@ class Passenger extends PhysicalThing {
           p = p.add(scene.cameraOffset);
         }
 
-        context.strokeStyle = GROUP_LINES_COLOR;
+        context.strokeStyle = this.ghost ? OGYGIA_COLOR : GROUP_LINES_COLOR;
         context.beginPath();
         context.arc(p.x, p.y, this.radius + this.avoidanceRadius, 0, TWOPI);
         context.stroke();
@@ -114,6 +118,7 @@ class Passenger extends PhysicalThing {
     this.playerDestination = null;
     this.playerDestinationScene = null;
     this.playerDestinationConfiner = null;
+    this.wantsToLinkTo = null;
 
     if (this.interacting) {
       this.interacting.onleave(this);
@@ -163,7 +168,12 @@ class Passenger extends PhysicalThing {
       color.b += this.collisionsCounter/600;
     }
 
-    context.fillStyle = color.toString();
+    if (this.ghost) {
+      context.fillStyle = OGYGIA_COLOR;
+    } else {
+      context.fillStyle = color.toString();
+    }
+    
     context.beginPath();
     context.arc(this.position.x, this.position.y, this.radius, 0, TWOPI);
     if (player == this) {
@@ -495,6 +505,7 @@ class Passenger extends PhysicalThing {
     for (let thing of this.scene.things) {
       if (!thing.isPhysical || thing == this) continue;
       if (thing.linkedPassenger && thing.linkedPassenger != this) continue;
+      if (thing == this.ghost) continue;
 
       let position;
       let radius;

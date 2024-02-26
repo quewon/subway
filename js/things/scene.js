@@ -159,6 +159,10 @@ class Scene {
         player.playerDestination = m;
         player.playerDestinationScene = scene;
         player.playerDestinationConfiner = mouse.confiner;
+
+        if (player.ghost) {
+          player.ghost.uneat(player);
+        }
       }
     }
   }
@@ -1014,6 +1018,9 @@ class TrainScene extends Scene {
         this.linkedScene.setConfinerScene();
       } else {
         mouse.confiner = this.getConfinerAtMouse(this.cameraOffset);
+        if (mouse.confiner) {
+          mouse.confinerScene = this;
+        }
       }
     }
  

@@ -45,9 +45,8 @@
     const BACKGROUND_COLOR = "white";
     const LINES_COLOR = "black";
     const GROUP_LINES_COLOR = new RGBA(200,20,10,.3).toString();
-    const OGYGIA_COLOR = new RGBA(200,210,230).toString();
-
-    const PLAYER_SPEED = 6;
+    const OGYGIA_RGB = new RGBA(200,210,230);
+    const OGYGIA_COLOR = OGYGIA_RGB.toString();
 
     var STATION_NAMES = [];
     function restockStationNames() {
@@ -133,7 +132,8 @@
       player = new Passenger({ position: new Vector2() });
       player.select();
 
-      // new Ghost();
+      // new Ghost({ scene: subway.homebase });
+      new Ghost();
     }
 
     function play() {

@@ -110,7 +110,11 @@ class Package extends Trinket {
     if (this.linkedPassenger) {
       this.deselect();
     } else {
-      player.wantsToLinkTo = this;
+      if (player.wantsToLinkTo == this) {
+        player.wantsToLinkTo = null;
+      } else {
+        player.wantsToLinkTo = this;
+      }
     }
   }
 
@@ -164,9 +168,6 @@ class Package extends Trinket {
     this.lineHeight = lineHeight;
     this.infoBoxSize = new Vector2(measurements.width, lineHeight * 3 - 5);
     this.infoBoxPadding = new Vector2(lineHeight/2, lineHeight/2);
-
-    // this.size = this.infoBoxSize.add(this.infoBoxPadding);
-
     this.size = new Vector2(15, 15);
   }
 
@@ -174,18 +175,20 @@ class Package extends Trinket {
     this.drawLink();
 
     if (this.linkedPassenger) {
-      context.strokeStyle = this.linkedPassenger.color.toString();
+      let passenger = this.linkedPassenger;
+      context.strokeStyle = passenger.ghost ? OGYGIA_COLOR : passenger.color.toString();
     } else {
-      context.strokeStyle = LINES_COLOR;
+      context.strokeStyle = this.ghost ? OGYGIA_COLOR : LINES_COLOR;
     }
     context.beginPath();
     context.rect(this.position.x, this.position.y, this.size.x, this.size.y);
-    context.stroke();
 
     if (player.wantsToLinkTo == this) {
-      context.fillStyle = player.color.toString();
+      context.strokeStyle = context.fillStyle = player.ghost ? OGYGIA_COLOR : player.color.toString();
       context.fill();
     }
+
+    context.stroke();
   }
 
   drawUI() {
@@ -233,7 +236,7 @@ class Package extends Trinket {
 
     let thirdline;
 
-    let stationName = this.recipient.scene.station.name;
+    let stationName = this.recipient.home.name;
     if (stationName) {
       stationName = stationName[0].toUpperCase() + stationName.substring(1);
       thirdline = "@ "+stationName+" Station";
