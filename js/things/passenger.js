@@ -504,7 +504,7 @@ class Passenger extends PhysicalThing {
 
     for (let thing of this.scene.things) {
       if (!thing.isPhysical || thing == this) continue;
-      if (thing.linkedPassenger && thing.linkedPassenger != this) continue;
+      if (thing.linkedPassenger == this) continue;
       if (thing == this.ghost) continue;
 
       let position;
