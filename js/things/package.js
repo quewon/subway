@@ -1,93 +1,3 @@
-class Trinket extends PhysicalThing {
-  constructor(p) {
-    super(p);
-    p = p || {};
-    this.linkedPassenger = null;
-  }
-
-  deselect() {
-    this.linkedPassenger = null;
-    player.wantsToLinkTo = null;
-  }
-
-  select() {
-    if (this.linkedPassenger) {
-      this.deselect();
-    } else {
-      player.wantsToLinkTo = this;
-    }
-  }
-
-  drawLink() {
-    if (this.linkedPassenger) {
-      context.strokeStyle = GROUP_LINES_COLOR;
-      let position = this.position;
-      if (this.size) position = position.add(this.size.div(2));
-      context.beginPath();
-      context.moveTo(position.x, position.y);
-      context.lineTo(this.linkedPassenger.position.x, this.linkedPassenger.position.y);
-      context.stroke();
-    }
-  }
-
-  followLink(dt) {
-    this.direction = new Vector2();
-    if (this.linkedPassenger) {
-      let link = this.linkedPassenger;
-
-      if (this.scene != link.scene) {
-        this.exit(this.scene);
-        this.enter(link.scene);
-        this.position = link.position.add(new Vector2(-link.direction.x * 10, 0));
-        this.previousConfiner = link.previousConfiner;
-      }
-      if (this.radius) {
-        if (link.position.distanceTo(this.position) > link.radius + link.avoidanceRadius + this.radius) {
-          this.followPassenger(dt);
-        }
-      } else {
-        if (!circleRect(link.position, link.radius + link.avoidanceRadius, this.position, this.size)) {
-          this.followPassenger(dt);
-        }
-      }
-    }
-    this.move(dt);
-  }
-
-  updateLink() {
-    if (player && player.wantsToLinkTo == this && player.scene == this.scene) {
-      if (this.radius) {
-        if (this.position.distanceTo(player.position) <= this.radius + player.radius) {
-          this.linkedPassenger = player;
-          player.wantsToLinkTo = null;
-        }
-      } else {
-        if (circleRect(player.position, player.radius, this.position, this.size)) {
-          this.linkedPassenger = player;
-          player.wantsToLinkTo = null;
-        }
-      }
-    }
-  }
-
-  update(dt) {
-    this.updateLink();
-    this.followLink(dt);
-    this.updateInteractionState();
-  }
-
-  followPassenger(dt) {
-    let link = this.linkedPassenger;
-
-    let position = this.position;
-    if (this.size) position = position.add(this.size.div(2));
-    let distance = Math.max(position.distanceTo(link.position), .01);
-    let direction = link.position.sub(position).normalize();
-
-    this.direction = direction.mul(distance * dt/400);
-  }
-}
-
 class Package extends Trinket {
   constructor(p) {
     super(p);
@@ -173,15 +83,21 @@ class Package extends Trinket {
 
   draw() {
     this.drawLink();
-
-    if (this.linkedPassenger) {
-      let passenger = this.linkedPassenger;
-      context.strokeStyle = passenger.ghost ? OGYGIA_COLOR : passenger.color.toString();
+    
+    if (this.ghost) {
+      context.strokeStyle = OGYGIA_COLOR;
+    } else if (this.linkedPassenger) {
+      context.strokeStyle = this.linkedPassenger.color.toString();
     } else {
-      context.strokeStyle = this.ghost ? OGYGIA_COLOR : LINES_COLOR;
+      context.strokeStyle = LINES_COLOR;
     }
+
     context.beginPath();
     context.rect(this.position.x, this.position.y, this.size.x, this.size.y);
+    context.moveTo(this.position.x, this.position.y);
+    context.lineTo(this.position.x + this.size.x, this.position.y + this.size.y);
+    context.moveTo(this.position.x + this.size.x, this.position.y);
+    context.lineTo(this.position.x, this.position.y + this.size.y);
 
     if (player.wantsToLinkTo == this) {
       context.strokeStyle = context.fillStyle = player.ghost ? OGYGIA_COLOR : player.color.toString();

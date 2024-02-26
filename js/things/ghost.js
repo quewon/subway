@@ -55,6 +55,10 @@ class Ghost extends PhysicalThing {
 
     eat(thing) {
         if (this.stomach.indexOf(thing) != -1) return;
+        if (thing.linkedPassenger && !thing.linkedPassenger.ghost) return;
+        if (thing.tag == "ghost") return;
+
+        if (thing.ghost) thing.ghost.uneat(thing);
 
         this.stomach.push(thing);
         thing.ghost = this;

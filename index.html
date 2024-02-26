@@ -30,6 +30,7 @@
   <script type="text/javascript" src="js/things/confiner.js"></script>
 
   <script type="text/javascript" src="js/things/thing.js"></script>
+  <script type="text/javascript" src="js/things/trinket.js"></script>
   <script type="text/javascript" src="js/things/interactable.js"></script>
   <script type="text/javascript" src="js/things/passenger.js"></script>
   <script type="text/javascript" src="js/things/package.js"></script>
@@ -78,7 +79,7 @@
       sounds.sfx["train layer 3"].volume(0);
 
       sounds.ambience.heathrow.loop(true);
-      sounds.ambience.heathrow.volume(.7);
+      sounds.ambience.heathrow.volume(.5);
 
       window.onresize();
 
@@ -95,11 +96,17 @@
       console.log("generating passengers...");
 
       for (let station of subway.stations) {
+        let sceneHasRadio = false;
         for (let i=0; i<station.lines.length * 2; i++) {
           let groupsize = Math.ceil(Math.random() * 5);
 
           if (groupsize == 1) {
-            new Passenger({ scene: station.scene });
+            let passenger = new Passenger({ scene: station.scene });
+            if (Math.random() > .5 && !sceneHasRadio) {
+              let radio = new Radio({ scene: station.scene });
+              radio.linkedPassenger = passenger;
+              sceneHasRadio = true;
+            }
           } else {
             let array = [];
             for (let i=0; i<groupsize; i++) {
@@ -135,6 +142,8 @@
     function createPlayer() {
       player = new Passenger({ position: new Vector2() });
       player.select();
+      player.exit();
+      player.enter(subway.currentScene);
     }
 
     function play() {

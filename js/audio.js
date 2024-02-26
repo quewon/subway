@@ -12,7 +12,7 @@ var soundslist = {
     "doors closing",
     "this is the final stop"
   ],
-  // "dialogue": 64
+  "radio": ["electronic"]
 }
 function load_sounds(onload) {
   console.log("loading sounds...");

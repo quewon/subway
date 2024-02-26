@@ -196,6 +196,7 @@ class PhysicalThing extends Thing {
 
     for (let thing of this.scene.things) {
       if (!thing.isPhysical || thing == this) continue;
+      if (thing == this.ghost) continue;
 
       var colliding = false;
       let direction, distance, radii;
@@ -288,6 +289,8 @@ class PhysicalThing extends Thing {
 
         this.collisionsCounter++;
         thing.collisionsCounter++;
+      } else {
+        this.collisionsCounter--;
       }
     }
 
@@ -298,23 +301,5 @@ class PhysicalThing extends Thing {
 
   applyForce(force) {
     this.velocity = this.velocity.add(force);
-  }
-}
-
-class ImageThing extends Thing {
-  constructor(p) {
-    p = p || {};
-    super(p);
-
-    this.image = p.image;
-    this.scale = p.scale || new Vector2(.5, .5);
-  }
-
-  draw() {
-    let width = this.image.width * this.scale.x;
-    let height = this.image.height * this.scale.y;
-    let x = this.position.x - width/2;
-    let y = this.position.y - height/2;
-    context.drawImage(this.image, x, y, width, height);
   }
 }

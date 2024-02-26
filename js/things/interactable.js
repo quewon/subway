@@ -408,9 +408,11 @@ class TrainTracker extends Interactable {
         let x = -width/2 + textWidth * i + textWidth/2;
         context.fillText(station.name, x, y);
 
-        let w = station.dotImage.width/1.5;
-        let h = station.dotImage.height/1.5;
-        context.drawImage(station.dotImage, x - w/2 + station.dotOffset.x, y - 5 - h/2 + station.dotOffset.y, w, h);
+        if (station.dotImage) {
+          let w = station.dotImage.width/1.5;
+          let h = station.dotImage.height/1.5;
+          context.drawImage(station.dotImage, x - w/2 + station.dotOffset.x, y - 5 - h/2 + station.dotOffset.y, w, h);
+        }
       }
     }
 

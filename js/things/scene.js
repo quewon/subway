@@ -162,6 +162,7 @@ class Scene {
 
         if (player.ghost) {
           player.ghost.uneat(player);
+          player.applyForce(player.playerDestination.sub(player.position).normalize().div(300));
         }
       }
     }
@@ -526,7 +527,7 @@ class StationScene extends Scene {
   }
 
   drawName() {
-    subway.drawStationInfo("this stop is", this.station.name+" station");
+    subway.drawStationInfo(this.station.name+" station");
   }
 
   updateDoors(dt) {
@@ -570,9 +571,6 @@ class StationScene extends Scene {
   drawTrains() {
     for (let info of this.trainsHere) {
       let offset = info.scene.getCameraOffset().add(info.scene.getTrainOffset());
-      if (subway.currentScene.tag == "train") {
-        // offset = offset.sub(info.scene.getTrainOffset());
-      }
       info.scene.cameraOffset = offset;
       this.drawTrain(info);
     }
@@ -909,9 +907,14 @@ class TrainScene extends Scene {
   linkToScene(scene, offset) {
     this.linkedScene = scene;
     this.linkOffset = offset;
+
+    this.previousLinkedScene = scene;
+    this.previousLinkOffset = offset;
   }
 
   unlink() {
+    if (!this.linkedScene) return;
+    this.previousStationOffset = this.anticipatedStationOffset;
     this.linkedScene = null;
     this.linkOffset = null;
     for (let thing of this.things) {
@@ -931,9 +934,16 @@ class TrainScene extends Scene {
   draw() {
     if (this.linkedScene) {
       this.linkedScene.draw();
+    } else if (this.previousLinkedScene && this.train.currentData.t < .5) {
+      let offset = this.previousStationOffset;
+      context.translate(offset.x, offset.y);
+      this.previousLinkedScene.draw();
     } else {
       this.camera();
       this.cameraOffset = this.cameraOffset.add(this.getTrainOffset());
+
+      context.save();
+
       context.translate(this.cameraOffset.x, this.cameraOffset.y);
       this.drawTrack();
       if (subway.shadowsEnabled) this.drawShadow();
@@ -941,6 +951,9 @@ class TrainScene extends Scene {
       this.drawConfiners();
       this.drawThings();
       this.drawUI();
+
+      context.restore();
+      subway.drawStationInfo();
     }
   }
 

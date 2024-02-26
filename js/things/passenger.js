@@ -10,11 +10,7 @@ class Passenger extends PhysicalThing {
     this.avoidMultiplier = .3;
     this.navigationMultiplier = .3;
 
-    if (Math.random() > .5) {
-      this.speakingRadius = 50;
-      this.volumeRadius = 150;
-      // this.dialogueHowl = sounds["dialogue"][sounds["dialogue"].length * Math.random() | 0];
-    }
+    this.dialogueRadius = 150;
 
     this.routePreference = Math.random() > .5 ? "simple" : "short";
     this.aimForHallCenter = true;
@@ -73,7 +69,7 @@ class Passenger extends PhysicalThing {
 
   draw() {
     if (player && player == this) {
-      if (this.playerDestination && this.playerDestinationConfiner && !this.interacting) {
+      if (this.playerDestination && this.playerDestinationConfiner && !this.interacting && !this.wantsToLinkTo) {
         let p = this.playerDestination;
         p = p.sub(this.scene.cameraOffset);
 
@@ -106,8 +102,10 @@ class Passenger extends PhysicalThing {
     if (this.group) {
       this.drawGroupLines();
     }
+  }
 
-    if (this.dialogueId) this.drawSpeakingRadius();
+  drawUI() {
+    this.drawDialogue();
   }
 
   resetPlayer() {
@@ -138,23 +136,9 @@ class Passenger extends PhysicalThing {
     player = this;
     this.colorOrigin = new RGBA(238,21,21);
     this.label = "you";
-    if (this.dialogueId) {
-      this.stopSpeaking();
-    }
     this.selected = true;
 
     subway.currentScene = this.scene;
-  }
-
-  drawSpeakingRadius() {
-    // LABEL OPTION
-
-    context.font = "13px sans-serif";
-    context.textAlign = "center";
-    context.textBaseline = "bottom";
-
-    context.fillStyle = "rgba(157, 193, 201, "+Math.max(this.dialogueHowl.volume(null, this.dialogueId), .2)+")";
-    context.fillText("talking", this.position.x, this.position.y - this.radius);
   }
 
   drawSelf() {
@@ -258,73 +242,97 @@ class Passenger extends PhysicalThing {
 
     this.move(dt);
 
-    if (player != this && this.dialogueHowl) this.speak();
+    if (this != player) {
+      this.updateDialogue(dt);
+    }
 
     this.updateInteractionState();
   }
 
-  speak() {
-    if (player && player.scene == this.scene) {
-      if (!this.dialogueEnded && !this.dialogueId) {
-        let someoneElseTalking = false;
+  updateDialogue(dt) {
+    if (!this.dialogue && !this.ghost) {
+      if (!this.dialoguePauseTimer) this.dialoguePauseTimer = 0;
+      if (!this.dialoguePauseDuration) this.dialoguePauseDuration = 1000 + Math.random() * 30000;
+      this.dialoguePauseTimer += dt;
 
-        for (let passenger of this.scene.things) {
-          if (passenger.tag != "passenger" || passenger == this) continue;
-          if (
-            passenger.dialogueId &&
-            passenger.position.distanceTo(this.position) <= this.radius + this.volumeRadius + passenger.radius + passenger.volumeRadius
-          ) {
-            someoneElseTalking = true;
-            break;
-          }
+      if (this.dialoguePauseTimer >= this.dialoguePauseDuration) {
+        this.dialoguePauseTimer = 0;
+        const dialogue = [
+          "hmm",
+          "sigh",
+          "haha",
+          "?",
+          "!",
+          "where am i?",
+          "where do i go?",
+          "how to get home",
+          "coming through",
+          "gotta go",
+          "oh my",
+          "oh",
+          "ha",
+          "hello",
+          "hi",
+          "huh",
+        ]
+        let string = dialogue[dialogue.length * Math.random() | 0];
+        if (Math.random() > .5) string = "... "+string;
+        let lastChar = string[string.length - 1];
+        if (Math.random() > .5 && lastChar != "?" && lastChar != "!") {
+          string += "...";
         }
-
-        if (!someoneElseTalking) {
-          let distance = this.position.distanceTo(player.position);
-
-          if (this.speakingRadius) {
-            let radius = this.radius + this.speakingRadius + player.radius;
-            if (distance <= this.radius + this.speakingRadius + player.radius) {
-              this.startSpeaking();
-            }
-          } else {
-            this.startSpeaking();
-          }
-        }
+        this.dialogue = string;
+        this.dialogueTimer = 0;
+        this.dialogueDuration = (string.length + 2) * 200;
       }
-    } else {
-      this.stopSpeaking();
     }
-
-    if (this.dialogueId) {
-      let mar = Math.max(this.avoidanceRadius, player.avoidanceRadius);
-      let distance = this.position.distanceTo(player.position) - mar;
-      let radius = this.radius + this.volumeRadius + player.radius - mar;
-      let volume = 1 - Math.max(Math.min((distance - this.radius)/radius, 1), 0);
-
-      let d = this.position.sub(player.position).normalize();
-      let pan = Math.min(Math.max(d.x, -.5), .5);
-
-      this.dialogueHowl.volume(volume, this.dialogueId);
-      this.dialogueHowl.stereo(pan, this.dialogueId);
+    
+    if (this.dialogue) {
+      this.dialogueTimer += dt;
+      if (this.dialogueTimer >= this.dialogueDuration) {
+        this.dialogue = null;
+        this.dialoguePauseDuration = null;
+      }
     }
   }
 
-  startSpeaking() {
-    if (this.dialogueId) return;
+  drawDialogue() {
+    if (this.dialogue) {
+      let string = this.dialogue.substring(0, this.dialogue.length * (this.dialogueTimer*3/this.dialogueDuration));
 
-    this.dialogueId = this.dialogueHowl.play();
-    this.dialogueHowl.once("end", function() {
-      this.dialogueEnded = true;
-      this.stopSpeaking();
-    }.bind(this), this.dialogueId);
-  }
+      context.font = "italic 11px sans-serif";
+      context.textAlign = "left";
+      context.textBaseline = "top";
+      let measurements = context.measureText(string);
+      let width = measurements.width;
+      let height = measurements.fontBoundingBoxDescent;
 
-  stopSpeaking() {
-    if (!this.dialogueId) return;
+      let padding = new Vector2(3, 0);
+      let box = new Vector2(width + padding.x * 2, height + padding.y * 2);
 
-    this.dialogueHowl.pause(this.dialogueId);
-    this.dialogueId = null;
+      let alpha = 1 - player.position.distanceTo(this.position)/this.dialogueRadius;
+
+      context.fillStyle = BACKGROUND_COLOR
+      context.strokeStyle = this.color.toString();
+      context.beginPath();
+      let x = this.position.x - box.x/2;
+      let y = this.position.y - this.radius * 2 - box.y;
+      context.rect(x, y, box.x, box.y);
+      if (alpha > 0) context.fill();
+
+      context.globalAlpha = Math.min(Math.max(alpha, 0), 1);
+      context.stroke();
+
+      context.fillStyle = this.color.toString();
+      context.fillText(string, x + padding.x, y + padding.y);
+
+      // context.beginPath();
+      // context.moveTo(this.position.x, this.position.y - this.radius * 2);
+      // context.lineTo(this.position.x, this.position.y - this.radius);
+      // context.stroke();
+
+      context.globalAlpha = 1;
+    }
   }
 
   headToPlayerDestination() {
@@ -357,6 +365,14 @@ class Passenger extends PhysicalThing {
         let train = scene.train;
         let line = train.line;
         let lineIndex = this.scene.station.lines.indexOf(line);
+
+        if (!train || !line || lineIndex == -1) {
+          this.playerDestination = null;
+          this.playerDestinationScene = null;
+          this.playerDestinationConfiner = null;
+          return direction;
+        }
+
         let platform = this.scene.platformConfiners[lineIndex];
 
         let confiner = this.previousConfiner;
@@ -442,7 +458,7 @@ class Passenger extends PhysicalThing {
             let hall = confiner;
             let hallCenter = hall.position;
 
-            if (this.aimForHallCenter) {
+            if (this.aimForHallCenter && hallCenter.distanceTo(this.position) < destination.distanceTo(this.position)) {
               let hallRadius;
               if (hall.radius) {
                 hallRadius = hall.radius;

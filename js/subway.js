@@ -21,11 +21,11 @@ class Subway {
     this.mapOpen = false;
     this.mapTimer = 0;
 
-    // this.homebase = this.getLargestStation().scene;
+    this.homebase = this.getLargestStation().scene;
     // this.homebase = this.lines[0].trains[0].scene;
-    this.homebase = this.lines[0].stations[0].scene;
+    // this.homebase = this.lines[0].stations[0].scene;
     // this.homebase = this.lines[0].ogygia.scene;
-    this.currentScene = this.lines[0].trains[0].scene;
+    this.currentScene = this.homebase;
   }
 
   setScene(scene) {
@@ -258,7 +258,7 @@ class Subway {
     }
   }
 
-  drawStationInfo(text1, text2) {
+  drawStationInfo(station_name) {
     let x = window.innerWidth/2 * GAME_SCALE - 10;
     let y = window.innerHeight/2 * GAME_SCALE - 10;
 
@@ -271,10 +271,12 @@ class Subway {
 
     context.fillText(time, x, y);
 
-    let lineHeight = context.measureText(time).fontBoundingBoxAscent;
-    y -= lineHeight;
+    if (station_name) {
+      let lineHeight = context.measureText(time).fontBoundingBoxAscent;
+      y -= lineHeight;
 
-    context.fillText(text2, x, y);
+      context.fillText(station_name, x, y);
+    }
   }
 
   draw() {
