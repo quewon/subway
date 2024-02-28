@@ -31,26 +31,10 @@ class Subway {
     this.currentScene = scene;
 
     if (previousScene) {
-      this.saveNotes(previousScene);
       previousScene.mute();
     }
 
-    this.placeNotes();
     scene.unmute();
-  }
-
-  saveNotes(scene) {
-    if (!subway.currentScene.notebookEdited) return;
-
-    scene.notebook = noteContext.getImageData(0, 0, notebook.width, notebook.height);
-    subway.currentScene.notebookEdited = false;
-  }
-
-  placeNotes() {
-    noteContext.clearRect(0, 0, notebook.width, notebook.height);
-
-    let data = this.currentScene.notebook;
-    noteContext.putImageData(data, (notebook.width - data.width)/2, (notebook.height - data.height)/2);
   }
 
   generateMap() {
@@ -460,12 +444,21 @@ class Subway {
 class Line {
   constructor(subway, lastPosition, color) {
     this.subway = subway;
-    this.type = Math.random() > .5 ? "circle" : "line";
+
+    let circles = 0;
+    for (let line of subway.lines) {
+      if (line.type == "circle") circles++;
+    }
+    if (circles >= 2) {
+      this.type = "line";
+    } else {
+      this.type = Math.random() > .5 ? "circle" : "line";
+    }
     this.color = color || new RGBA();
 
     switch (this.type) {
       case "circle":
-        this.radius = this.subway.stationSpacing + Math.random() * (this.subway.stationSpacing * 1.5);
+        this.radius = this.subway.stationSpacing/2 + Math.random() * (this.subway.stationSpacing * 1.5);
         this.position = lastPosition.add(
           new Vector2(Math.random(), Math.random())
           .normalize()
@@ -475,7 +468,7 @@ class Line {
 
       case "line":
         this.p1 = lastPosition;
-        let width = this.subway.stationSpacing * 7;
+        let width = this.subway.stationSpacing * 5;
         this.p2 = new Vector2(Math.random() * width - width/2, Math.random() * width - width/2);
         break;
     }

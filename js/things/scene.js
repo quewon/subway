@@ -154,6 +154,21 @@ class Scene {
       player.playerDestinationScene = null;
       player.playerDestinationConfiner = null;
     }
+    if (player && player.interacting && player.interacting.hasPathTo(player)) {
+      player.interacting.select();
+    }
+    if (player && player.wantsToLinkTo && player.wantsToLinkTo.hasPathTo(player)) {
+      let thing = player.wantsToLinkTo;
+      if (thing.previousConfiner) {
+          if (thing.size) {
+              player.playerDestination = thing.position.add(thing.size.div(2));
+          } else {
+              player.playerDestination = thing.position;
+          }
+          player.playerDestinationScene = thing.scene;
+          player.playerDestinationConfiner = thing.previousConfiner;
+      }
+    }
   }
 
   inSameScreen(scene) {
@@ -420,7 +435,7 @@ class StationScene extends Scene {
         direction: -1
       });
 
-      if (width > 80) {
+      if (width > 80 && !this.isOgygiaScene) {
         new VendingMachine({
           scene: this,
           position: new Vector2(x + width/2 - 15, y + (lineIndex%2==0 ? 20 : height - 20) - 20)
@@ -529,9 +544,10 @@ class StationScene extends Scene {
     this.drawName();
 
     this.drawTrains();
+    this.drawTrainsThings();
     this.drawConfiners();
     this.drawFloorLines();
-    this.drawTrainsThings();
+    this.drawLinkedTrainsThings();
     this.drawThings();
     
     this.drawUI();
@@ -643,6 +659,7 @@ class StationScene extends Scene {
       let offset = this.getTrainPosition(train).add(this.getTrainTravelVector(train));
       context.save();
       context.translate(offset.x, offset.y);
+      context.translate(train.scene.jiggleOffset.x, train.scene.jiggleOffset.y);
       train.scene.drawLabels();
       context.restore();
     }
@@ -667,6 +684,7 @@ class StationScene extends Scene {
 
       context.save();
       context.translate(offset.x, offset.y);
+      context.translate(train.scene.jiggleOffset.x, train.scene.jiggleOffset.y);
       train.scene.drawUI();
       context.restore();
     }
@@ -678,6 +696,7 @@ class StationScene extends Scene {
 
       context.save();
       context.translate(offset.x, offset.y);
+      context.translate(train.scene.jiggleOffset.x, train.scene.jiggleOffset.y);
 
       let data = train.currentData;
       if (!data.stopped) {
@@ -711,7 +730,29 @@ class StationScene extends Scene {
       let offset = this.getTrainPosition(train).add(this.getTrainTravelVector(train));
       context.save();
       context.translate(offset.x, offset.y);
+      context.translate(train.scene.jiggleOffset.x, train.scene.jiggleOffset.y);
       scene.drawThings();
+      context.restore();
+    }
+  }
+
+  drawLinkedTrainsThings() {
+    for (let train of this.trainsHere) {
+      let scene = train.scene;
+      let doorIndex = train.currentData.direction > 0 ? 1 : 0;
+      if (!scene.doors[doorIndex].open && scene != subway.currentScene) continue;
+
+      let offset = this.getTrainPosition(train).add(this.getTrainTravelVector(train));
+      context.save();
+      context.translate(offset.x, offset.y);
+      context.translate(train.scene.jiggleOffset.x, train.scene.jiggleOffset.y);
+      
+      for (let thing of scene.things) {
+        if (thing.linkedScene == this) {
+          thing.draw();
+        }
+      }
+
       context.restore();
     }
   }
@@ -908,6 +949,14 @@ class TrainScene extends Scene {
     let stop = this.getNearbyStop();
     let scene = stop.scene;
 
+    if (!this.train.currentData.stopped) {
+      context.save();
+      let to = this.getTrainOffset();
+      context.translate(to.x, to.y);
+      this.drawTrack();
+      context.restore();
+    }
+
     context.save();
     context.translate(offset.x, offset.y);
     scene.draw();
@@ -915,10 +964,8 @@ class TrainScene extends Scene {
   }
 
   drawTrack() {
-    let data = this.train.currentData;
-
     let color = new RGBA(this.line.color);
-    color.a = data ? lerp(.3, 0, data.door_t) : .3;
+    color.a = this.subtleFactor ? lerp(0, .3, this.subtleFactor) : .3;
     context.strokeStyle = color.toString();
 
     context.beginPath();
@@ -928,8 +975,6 @@ class TrainScene extends Scene {
   }
 
   drawTrain(covered) {
-    context.translate(this.jiggleOffset.x, this.jiggleOffset.y);
-
     context.fillStyle = BACKGROUND_COLOR;
     context.strokeStyle = this.line.color.toString();
     context.beginPath();
@@ -1035,7 +1080,17 @@ class TrainScene extends Scene {
       }
     }
 
-    if (!player || player.scene != this) return;
+    if (!player || !this.inSameScreen(player.scene)) return;
+
+    if (this.previousDoorsOpen && !data.doors_open) {
+      sounds.sfx["doors close"].play();
+    } else if (!this.previousDoorsOpen && data.doors_open) {
+      sounds.sfx["doors open"].play();
+    }
+
+    this.previousDoorsOpen = data.doors_open;
+
+    if (!player || !this.isAudibleTo(player.scene)) return;
 
     let t = data.t;
 
@@ -1078,14 +1133,6 @@ class TrainScene extends Scene {
 
       this.tunnelFactor = tunnelVolume;
     }
-
-    if (this.previousDoorsOpen && !data.doors_open) {
-      sounds.sfx["doors close"].play();
-    } else if (!this.previousDoorsOpen && data.doors_open) {
-      sounds.sfx["doors open"].play();
-    }
-
-    this.previousDoorsOpen = data.doors_open;
   }
 
   setNoiseLayersVolume(v1, v2, v3) {

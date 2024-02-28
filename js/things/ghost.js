@@ -13,6 +13,8 @@ class Ghost extends PhysicalThing {
         this.stomachCapacity = 10;
 
         this.soundHowl = sounds["ghost"][sounds["ghost"].length * Math.random() | 0];
+
+        this.direction = new Vector2();
     }
 
     drawSelf() {
@@ -31,8 +33,6 @@ class Ghost extends PhysicalThing {
     }
 
     update(dt) {
-        this.direction = new Vector2();
-
         if (this.stomach.length < this.stomachCapacity) {
             for (let thing of this.scene.things) {
                 if (thing == this || !thing.isPhysical) continue;
@@ -47,7 +47,7 @@ class Ghost extends PhysicalThing {
                 }
             }
 
-            this.lookForFood();
+            // this.lookForFood();
         } else {
             if (this.stomach.length >= this.stomachCapacity) {
                 let expelling = this.stomach[0];
@@ -60,8 +60,20 @@ class Ghost extends PhysicalThing {
                 }
             }
 
-            this.lookForOgygia();
+            // this.lookForOgygia();
         }
+        
+        // this.direction = this.direction.add(
+        //     this.headToDestination()
+        //     .mul(.3 * dt/10)
+        // );
+
+        this.direction = this.direction.add(new Vector2(
+            Math.random() - .5,
+            Math.random() - .5
+        ).mul(dt/100));
+
+        this.direction = this.direction.normalize();
 
         this.move(dt);
 
@@ -88,35 +100,45 @@ class Ghost extends PhysicalThing {
         thing.ghost = null;
     }
 
-    lookForFood() {
-      let scene = this.scene;
-      if (scene.tag == "train") {
+    // lookForFood() {
+    //   let scene = this.scene;
+    //   if (scene.tag == "train") {
+    //     if (scene.linkedScene) {
+    //         this.destination = scene.linkedScene;
+    //     }
+    //   } else if (scene.tag == "station") {
+    //     let closestTrainScene;
+    //     let closestTrainDistance = Infinity;
+    //     for (let train of scene.trainsHere) {
+    //         if (train.currentData.doors_open) {
+    //             let position = scene.getTrainPosition(train).add(scene.getTrainTravelVector(train));
+    //             let distance = this.position.distanceTo(position);
+    //             if (distance < closestTrainDistance) {
+    //                 closestTrainScene = train.scene;
+    //                 closestTrainDistance = distance;
+    //             }
+    //         }
+    //     }
 
-      } else if (scene.tag == "station") {
-        let closestTrainScene;
-        let closestTrainDistance = Infinity;
-        for (let train of scene.trainsHere) {
-            if (train.currentData.doors_open) {
-                let position = scene.getTrainPosition(train).add(scene.getTrainTravelVector(train));
-                let distance = this.position.distanceTo(position);
-                if (distance < closestTrainDistance) {
-                    closestTrainScene = train.scene;
-                    closestTrainDistance = distance;
-                }
-            }
-        }
+    //     if (closestTrainScene) {
+    //         this.destination = closestTrainScene;
+    //     }
+    //   }
+    // }
 
-        if (closestTrainScene) {
-            this.destination = closestTrainScene;
-        } else {
+    // lookForOgygia() {
+    //     let station;
+    //     if (scene.tag == "station") {
+    //         station = scene.station;
+    //     } else if (scene.tag == "train") {
+    //         station = scene.getNearbyStop();
+    //     }
+    //     let route = subway.getSimplestOgygiaRoute(station);
+    // }
 
-        }
-      }
-    }
+    // headToDestination() {
 
-    lookForOgygia() {
-
-    }
+    // }
 
     startSinging() {
         if (this.soundId) return;

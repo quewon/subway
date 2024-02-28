@@ -81,22 +81,15 @@ class RectConfiner {
   confine(dt, thing) {
     let force = new Vector2();
 
-    let position;
-    let radius;
-    if (thing.radius) {
-      position = thing.position;
-      radius = thing.radius;
-    } else {
-      position = thing.position.add(thing.size.div(2));
-      radius = Math.max(thing.size.x, thing.size.y)/2;
-    }
+    let position = thing.radius ? thing.position : thing.position.add(thing.size.div(2));
+    let radius = thing.radius ? thing.radius : (thing.size.x + thing.size.y)/4;
 
     let cor = circleOutsideRect(position, radius, this.position, this.size);
 
     force.x += cor.direction.x * Math.max(cor.distance.x/10, 1);
     force.y += cor.direction.y * Math.max(cor.distance.y/10, 1);
 
-    thing.applyForce(force.mul(dt/500 * thing.speed));
+    thing.applyForce(force.mul(dt/1000 * thing.speed));
   }
 
   resolveVisitor(thing) {
@@ -205,10 +198,12 @@ class CircleConfiner {
     let direction = this.position.sub(position).normalize();
     let distance = this.position.distanceTo(position);
 
-    force.x += direction.x * distance/50;
-    force.y += direction.y * distance/50;
+    let distanceOutside = distance - this.radius + (thing.radius ? thing.radius : (thing.size.x + thing.size.y)/4);
+    distanceOutside = Math.max(0, distanceOutside);
 
-    thing.applyForce(force.mul(dt/500 * thing.speed));
+    force = direction.mul(distanceOutside/10);
+
+    thing.applyForce(force.mul(dt/1000 * thing.speed));
   }
 
   containsMouse(offset) {
@@ -287,8 +282,5 @@ class Door {
       context.stroke();
       context.setLineDash([]);
     }
-
-    // context.fillStyle = new RGBA(255,0,0,.2).toString();
-    // context.fillRect(position.x, position.y, this.size.x, this.size.y);
   }
 }

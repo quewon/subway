@@ -298,7 +298,7 @@ class PhysicalThing extends Thing {
 
         this.collisionsCounter++;
         thing.collisionsCounter++;
-      } else if (this.collisionsCounter > 0) {
+      } else if (this.collisionsCounter > 0 && !this.dontCoolDown) {
         this.collisionsCounter--;
       }
     }

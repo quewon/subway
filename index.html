@@ -9,7 +9,6 @@
   <body>
 
     <canvas id="game"></canvas>
-    <canvas id="notebook"></canvas>
 
     <div id="playprompt">loading...</div>
 
@@ -59,6 +58,15 @@
     }
     restockRecipientNames();
 
+    var UNFOUND_MUSIC = [];
+    function restockMusic() {
+      UNFOUND_MUSIC = [];
+      for (let name of soundslist.radio) {
+        UNFOUND_MUSIC.push(name);
+      }
+    }
+    restockMusic();
+
     var player;
     var subway;
 
@@ -94,17 +102,11 @@
       console.log("generating passengers...");
 
       for (let station of subway.stations) {
-        let sceneHasRadio = false;
         for (let i=0; i<station.lines.length * 2; i++) {
           let groupsize = Math.ceil(Math.random() * 5);
 
           if (groupsize == 1) {
             let passenger = new Passenger({ scene: station.scene });
-            if (Math.random() > .5 && !sceneHasRadio) {
-              let radio = new Radio({ scene: station.scene });
-              radio.linkedPassenger = passenger;
-              sceneHasRadio = true;
-            }
           } else {
             let array = [];
             for (let i=0; i<groupsize; i++) {
@@ -113,16 +115,17 @@
             new Group(array);
           }
         }
-
-        if (
-          Math.random() > .5
-          && station.scene != subway.homebase
-        ) {
-          new Ghost({ scene: station.scene });
-        }
+        
+        let position = new Vector2(0, -300);
+        new Mop({ scene: station.scene, position: position });
+        new Bucket({ scene: station.scene, position: position });
       }
 
-      for (let i=0; i<3; i++) {
+      for (let line of subway.lines) {
+        new Ghost({ scene: line.ogygia.scene });
+      }
+
+      for (let i=0; i<soundslist.radio.length-1; i++) {
         new Package();
       }
       let randomLine = subway.lines[subway.lines.length * Math.random() | 0];
@@ -153,8 +156,8 @@
       init_inputs();
 
       createPlayer();
-      // subway.time = 5 * 60 * 60 + 30 + 53;
-      subway.time = 5 * 60 * 60 + 60;
+      subway.time = 5 * 60 * 60 + 30;
+      // subway.time = 5 * 60 * 60 + 60;
     }
   </script>
 </html>

@@ -78,6 +78,15 @@ class Passenger extends PhysicalThing {
   }
 
   draw() {
+    this.drawSelf();
+    this.drawAvoidanceRadius();
+
+    if (this.group && !this.ghost) {
+      this.drawGroupLines();
+    }
+  }
+
+  drawLabels() {
     if (player && player == this) {
       // destination
 
@@ -110,15 +119,6 @@ class Passenger extends PhysicalThing {
       context.setLineDash([]);
     }
 
-    this.drawSelf();
-    this.drawAvoidanceRadius();
-
-    if (this.group && !this.ghost) {
-      this.drawGroupLines();
-    }
-  }
-
-  drawLabels() {
     if (this.label) {
       context.fillStyle = this.ghost ? OGYGIA_COLOR : this.color.toString();
       context.font = "13px sans-serif";
@@ -135,18 +135,11 @@ class Passenger extends PhysicalThing {
     this.label = this.name;
     this.selected = false;
 
-    this.playerDestination = null;
-    this.playerDestinationScene = null;
-    this.playerDestinationConfiner = null;
-    this.wantsToLinkTo = null;
-
     if (this.interacting) {
       this.interacting.onleave(this);
       this.interacting.deselect();
       this.interacting = null;
     }
-
-    player = null;
   }
 
   deselect() {
@@ -297,9 +290,7 @@ class Passenger extends PhysicalThing {
         if (Math.random() > .5 && lastChar != "?" && lastChar != "!") {
           string += "...";
         }
-        this.dialogue = string;
-        this.dialogueTimer = 0;
-        this.dialogueDuration = (string.length + 2) * 200;
+        this.setDialogue(string);
 
         let scene = this.scene;
         this.exit();
@@ -318,6 +309,12 @@ class Passenger extends PhysicalThing {
         this.dialoguePauseDuration = null;
       }
     }
+  }
+
+  setDialogue(string) {
+    this.dialogue = string;
+    this.dialogueTimer = 0;
+    this.dialogueDuration = (string.length + 2) * 200;
   }
 
   drawDialogue() {
@@ -623,7 +620,6 @@ class Passenger extends PhysicalThing {
 
     if (this.scene.tag == "ogygia" && this.previousConfiner) {
       let line = this.scene.station.lines[0];
-      let ogygia = this.scene.station;
       let platform = this.scene.platformConfiners[0];
 
       let inPlatform = this.previousConfiner.isPlatform;

@@ -56,13 +56,8 @@ class Package extends Trinket {
   }
 
   createRecipient(station) {
-    let ri = RECIPIENT_NAMES.length * Math.random() | 0;
-    let recipientName = RECIPIENT_NAMES[ri];
-    RECIPIENT_NAMES.splice(ri, 1);
-
-    if (RECIPIENT_NAMES.length == 0) {
-      restockRecipientNames();
-    }
+    let recipientName = RECIPIENT_NAMES.splice(RECIPIENT_NAMES.length * Math.random() | 0, 1)[0];
+    if (RECIPIENT_NAMES.length == 0) restockRecipientNames();
 
     if (!station) {
       let randomStations = [];
@@ -92,7 +87,10 @@ class Package extends Trinket {
     let lineHeight = measurements.fontBoundingBoxDescent + 5;
 
     this.lineHeight = lineHeight;
-    this.infoBoxSize = new Vector2(measurements.width, lineHeight * 2 - 5);
+    this.infoBoxSize = new Vector2(measurements.width, lineHeight * 3 - 5);
+    if (this.recipient.home.scene.isOgygiaScene) {
+      this.infoBoxSize = new Vector2(measurements.width, lineHeight * 2 - 5);
+    }
     this.infoBoxPadding = new Vector2(lineHeight/2, lineHeight/2);
   }
 
@@ -164,6 +162,13 @@ class Package extends Trinket {
     y += this.lineHeight;
 
     context.fillText(this.recipient.name.toUpperCase(), x, y);
+
+    let stationName = this.recipient.home.name;
+    if (stationName != "") {
+      y += this.lineHeight;
+      stationName = stationName[0].toUpperCase() + stationName.slice(1);
+      context.fillText("@ "+stationName, x, y);
+    }
   }
 }
 
@@ -235,6 +240,24 @@ class Recipient extends Passenger {
 
     this.package.exit();
     this.package = null;
+
+    let potentialPassengers = [];
+    for (let line of subway.lines) {
+      for (let station of line.stations) {
+        if (station.scene == this.scene) continue;
+        for (let thing of station.scene.things) {
+          if (thing != player && thing.tag == "passenger") potentialPassengers.push(thing);
+        }
+      }
+      for (let train of line.trains) {
+        if (train.scene == this.scene) continue;
+        for (let thing of train.scene.things) {
+          if (thing != player && thing.tag == "passenger") potentialPassengers.push(thing);
+        }
+      }
+    }
+    let a = potentialPassengers[potentialPassengers.length * Math.random() | 0];
+    new Package({ scene: a.scene });
   }
 }
 

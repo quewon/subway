@@ -119,6 +119,7 @@ class Trinket extends PhysicalThing {
                     if (this.size) center = center.add(this.size.div(2));
                     applySpacialAudio(this.linkHowl, id, center, player.getGlobalPosition(), 200);
                 }
+                this.onlink(player);
             }
         }
 
@@ -171,6 +172,8 @@ class Trinket extends PhysicalThing {
             context.fillText(this.label, this.position.x + this.size.x/2, this.position.y);
         }
     }
+
+    onlink(passenger) { }
 }
 
 class Radio extends Trinket {
@@ -181,7 +184,8 @@ class Radio extends Trinket {
         this.size = new Vector2(17, 10);
         this.label = "radio";
 
-        this.musicTitle = soundslist["radio"][soundslist["radio"].length * Math.random() | 0];
+        this.musicTitle = UNFOUND_MUSIC.splice(UNFOUND_MUSIC.length * Math.random() | 0, 1)[0];
+        if (UNFOUND_MUSIC.length == 0) restockMusic();
         this.soundHowl = sounds["radio"][this.musicTitle];
 
         this.linkHowl = sounds.sfx["click3"];
@@ -288,5 +292,143 @@ class Soda extends Trinket {
 
         this.label = "soda";
         this.size = new Vector2(10, 15);
+    }
+}
+
+class Mop extends Trinket {
+    constructor(p) {
+        super(p);
+        this.size = new Vector2(15, 30);
+        this.tag = "mop";
+
+        this.wet = 0;
+        this.interval = 0;
+        this.speed = 10;
+    }
+
+    drawSelf() {
+        if (this.ghost) {
+            context.strokeStyle = OGYGIA_COLOR;
+        } else if (this.linkedPassenger) {
+            context.strokeStyle = this.linkedPassenger.color.toString();
+        } else {
+            context.strokeStyle = LINES_COLOR;
+        }
+
+        context.beginPath();
+        context.moveTo(this.position.x + this.size.x/2, this.position.y);
+        context.lineTo(this.position.x + this.size.x/2, this.position.y + this.size.y);
+        context.rect(this.position.x, this.position.y + this.size.y * 2/3, this.size.x, this.size.y * 1/3);
+        context.moveTo(this.position.x + this.size.x/4, this.position.y + this.size.y * 2/3);
+        context.lineTo(this.position.x + this.size.x/4, this.position.y + this.size.y);
+        context.moveTo(this.position.x + this.size.x * 3/4, this.position.y + this.size.y * 2/3);
+        context.lineTo(this.position.x + this.size.x * 3/4, this.position.y + this.size.y);
+        if (player.wantsToLinkTo == this) {
+            context.fillStyle = context.strokeStyle = player.color.toString();
+            context.fill();
+        }
+        context.stroke();
+
+        context.beginPath();
+        context.rect(this.position.x, this.position.y + this.size.y - (this.wet/100 * this.size.y * 1/3), this.size.x, this.size.y * 1/3 * this.wet/100);
+        context.fillStyle = OGYGIA_COLOR;
+        context.fill();
+    }
+
+    update(dt) {
+        this.updateLink();
+        this.followLink(dt);
+        this.updateInteractionState();
+
+        if (this.wet > 0 && this.velocity.sqrMagnitude() > .1) {
+            this.interval += dt;
+            if (this.interval >= 100) {
+                this.interval = 0;
+                this.wet--;
+                let force = this.velocity.mul(-1).add(new Vector2(
+                    Math.random() - .5,
+                    Math.random() - .5
+                ).mul(2));
+                new Bubble({
+                    scene: this.scene,
+                    position: this.position.add(new Vector2(this.size.x/2, this.size.y)),
+                    velocity: force
+                });
+            }
+        }
+    }
+}
+
+class Bucket extends Trinket {
+    constructor(p) {
+        super(p);
+        this.size = new Vector2(16, 25);
+    }
+
+    drawSelf() {
+        if (this.ghost) {
+            context.strokeStyle = OGYGIA_COLOR;
+        } else if (this.linkedPassenger) {
+            context.strokeStyle = this.linkedPassenger.color.toString();
+        } else {
+            context.strokeStyle = LINES_COLOR;
+        }
+
+        context.beginPath();
+        context.rect(this.position.x, this.position.y + this.size.x/2, this.size.x, this.size.y - this.size.x/2);
+        if (player.wantsToLinkTo == this) {
+            context.fillStyle = context.strokeStyle = player.color.toString();
+            context.fill();
+        }
+        context.arc(this.position.x + this.size.x/2, this.position.y + this.size.x/2, this.size.x/2, Math.PI, TWOPI);
+        context.stroke();
+    }
+
+    onlink(passenger) {
+        let mop;
+        for (let thing of passenger.scene.things) {
+            if (thing.tag == "mop" && thing.linkedPassenger == passenger) {
+                mop = thing;
+                break;
+            }
+        }
+        if (mop) {
+            mop.wet = 100;
+            passenger.setDialogue("mop is wet");
+            this.deselect();
+        }
+    }
+}
+
+class Bubble extends PhysicalThing {
+    constructor(p) {
+        super(p);
+
+        this.radius = 2 + Math.random() * 4;
+        this.colorOrigin = OGYGIA_RGB;
+        this.color = OGYGIA_RGB;
+
+        this.isPhysical = false;
+        this.dontCoolDown = true;
+    }
+
+    update(dt) {
+        this.direction = new Vector2();
+        this.move(dt);
+
+        if (this.collisionsCounter >= 50) {
+            this.exit();
+        }
+
+        this.collisionsCounter += dt/100;
+    }
+
+    draw() {
+        context.globalAlpha = 1 - this.collisionsCounter/50;
+        context.beginPath();
+        context.strokeStyle = OGYGIA_COLOR;
+        context.arc(this.position.x, this.position.y, this.radius, 0, TWOPI);
+        context.stroke();
+        context.globalAlpha = 1;
     }
 }

@@ -33,7 +33,7 @@ var soundslist = {
     "doors closing",
     "this is the final stop"
   ],
-  "radio": ["electronic"],
+  "radio": ["systems", "jammer"],
   "ghost": 3,
 }
 function load_sounds(onload) {

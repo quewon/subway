@@ -544,10 +544,10 @@ class VendingMachine extends Trinket {
       context.fillStyle = this.color.toString();
     }
 
-    context.font = "italic bold 8px sans-serif";
+    context.font = "bold 8px sans-serif";
     context.textAlign = "left";
     context.textBaseline = "middle";
-    let lines = ["VEND", "INGM", "ACHI", "NE"];
+    let lines = ["VEND", "ING", "MACH", "INE"];
     let lineHeight = this.size.y/(lines.length);
     let y = this.position.y + lineHeight/2;
     for (let line of lines) {
@@ -615,7 +615,7 @@ class VendingMachine extends Trinket {
 
       setTimeout(function() {
         let force = this.aimPassenger.position.sub(this.position).div(10);
-        new Soda({
+        new Radio({
           scene: this.scene,
           position: this.position,
           velocity: force
