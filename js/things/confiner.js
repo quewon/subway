@@ -89,7 +89,11 @@ class RectConfiner {
     force.x += cor.direction.x * Math.max(cor.distance.x/10, 1);
     force.y += cor.direction.y * Math.max(cor.distance.y/10, 1);
 
-    thing.applyForce(force.mul(dt/1000 * thing.speed));
+    if (thing.tag == "passenger") {
+      thing.applyForce(force.mul(dt/300 * thing.speed));
+    } else {
+      thing.applyForce(force.mul(dt/1000 * thing.speed));
+    }
   }
 
   resolveVisitor(thing) {
@@ -203,7 +207,11 @@ class CircleConfiner {
 
     force = direction.mul(distanceOutside/10);
 
-    thing.applyForce(force.mul(dt/1000 * thing.speed));
+    if (thing.tag == "passenger") {
+      thing.applyForce(force.mul(dt/300 * thing.speed));
+    } else {
+      thing.applyForce(force.mul(dt/1000 * thing.speed));
+    }
   }
 
   containsMouse(offset) {
