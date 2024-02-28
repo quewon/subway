@@ -699,13 +699,15 @@ class StationScene extends Scene {
       context.translate(train.scene.jiggleOffset.x, train.scene.jiggleOffset.y);
 
       let data = train.currentData;
-      if (!data.stopped) {
-        let t = data.t;
-        if (
-          (!this.isOgygiaScene && data.this_stop != this.station) ||
-          (this.isOgygiaScene && data.this_stop)
-        ) t -= 1;
-        context.globalAlpha = lerp(0, 1, t * 2);
+      if (data && !data.stopped && train.scene != subway.currentScene) {
+        let t = data.unsmoothed_t;
+        if (t > .5) {
+          t = 1 - t;
+        }
+        t = Math.min(1, t * 3);
+        t = smoothstep(t);
+
+        context.globalAlpha = 1 - t;
       }
 
       let scene = train.scene;
@@ -716,6 +718,8 @@ class StationScene extends Scene {
       } else {
         scene.drawTrain(true);
       }
+
+      context.globalAlpha = 1;
 
       context.restore();
     }
