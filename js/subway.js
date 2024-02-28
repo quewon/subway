@@ -6,7 +6,6 @@ class Subway {
     this.mapLineWidth = 2;
     this.mapStationRadius = 3;
     this.stationSpacing = 50;
-    this.shadowsEnabled = false;
     this.stationNameFont = "12px sans-serif";
     this.stationNameLineHeight = 12;
 
@@ -964,6 +963,7 @@ class Train {
           doors_open: doors_open,
           doors_closing: doors_closing,
           t: smoothstep(t),
+          unsmoothed_t: t,
           door_t: smoothstep(door_t),
         }
       }

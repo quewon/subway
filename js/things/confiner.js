@@ -16,13 +16,6 @@ class RectConfiner {
     }
   }
 
-  drawShadow() {
-    context.fillStyle = SHADOW_COLOR;
-    context.beginPath();
-    context.rect(this.position.x + SHADOW_DEPTH, this.position.y + SHADOW_DEPTH, this.size.x, this.size.y);
-    context.fill();
-  }
-
   drawWalls() {
     context.lineWidth = 2;
     context.strokeStyle = this.wallColor;
@@ -146,13 +139,6 @@ class CircleConfiner {
       position: this.position.sub(radius2),
       size: radius2.mul(2)
     }
-  }
-
-  drawShadow() {
-    context.fillStyle = SHADOW_COLOR;
-    context.beginPath();
-    context.arc(this.position.x + SHADOW_DEPTH, this.position.y + SHADOW_DEPTH, this.radius, 0, TWOPI);
-    context.fill();
   }
 
   drawWalls() {

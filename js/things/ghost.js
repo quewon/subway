@@ -16,7 +16,7 @@ class Ghost extends PhysicalThing {
     }
 
     drawSelf() {
-        let distance = this.getScreenPosition().distanceTo(player.getScreenPosition());
+        let distance = this.getGlobalPosition().distanceTo(player.getGlobalPosition());
         context.globalAlpha = Math.min(Math.max(1 - (distance - this.radius)/this.volumeRadius, 0), 1);
 
         context.beginPath();
@@ -95,11 +95,12 @@ class Ghost extends PhysicalThing {
       } else if (scene.tag == "station") {
         let closestTrainScene;
         let closestTrainDistance = Infinity;
-        for (let info of scene.trainsHere) {
-            if (info.data.doors_open) {
-                let distance = this.position.distanceTo(info.position);
+        for (let train of scene.trainsHere) {
+            if (train.currentData.doors_open) {
+                let position = scene.getTrainPosition(train).add(scene.getTrainTravelVector(train));
+                let distance = this.position.distanceTo(position);
                 if (distance < closestTrainDistance) {
-                    closestTrainScene = info.scene;
+                    closestTrainScene = train.scene;
                     closestTrainDistance = distance;
                 }
             }
@@ -130,7 +131,7 @@ class Ghost extends PhysicalThing {
     }
 
     updateSound() {
-        let withPlayer = player && this.inSameScreen(player);
+        let withPlayer = player && this.isAudibleTo(player);
         if (withPlayer && !this.soundId) {
             this.startSinging();
         } else if (!withPlayer && this.soundId) {

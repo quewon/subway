@@ -83,14 +83,14 @@ class Passenger extends PhysicalThing {
 
       if (this.playerDestination && this.playerDestinationConfiner && !this.interacting && !this.wantsToLinkTo) {
         let p = this.playerDestination;
-        p = p.sub(this.scene.cameraOffset);
+        p = p.sub(this.scene.getOffset());
 
         let scene = this.playerDestinationScene;
         if (
           scene.tag == "train" && scene.linkedScene == this.scene.linkedScene ||
           scene.tag == "train" && scene.linkedScene == this.scene
         ) {
-          p = p.add(scene.cameraOffset);
+          p = p.add(scene.getOffset());
         }
 
         context.strokeStyle = this.ghost ? OGYGIA_COLOR : GROUP_LINES_COLOR;
@@ -101,7 +101,7 @@ class Passenger extends PhysicalThing {
       
       // mouse
 
-      let p = mouse.gamePosition.sub(this.scene.cameraOffset);
+      let p = mouse.gamePosition.sub(this.scene.getOffset());
       context.strokeStyle = "rgba(0,0,0,.3)";
       context.beginPath();
       context.arc(p.x, p.y, this.radius + this.avoidanceRadius, 0, TWOPI);
@@ -209,9 +209,6 @@ class Passenger extends PhysicalThing {
       let radius = this.radius + this.avoidanceRadius + passenger.radius;
 
       if (distance < radius) {
-        let direction = passenger.position.sub(this.position).jiggle(1).normalize();
-        // let p1 = new Vector2(this.position.x, this.position.y).add(direction.mul(this.radius));
-        // let p2 = new Vector2(passenger.position.x, passenger.position.y).sub(direction.mul(passenger.radius));
         let p1 = this.position;
         let p2 = passenger.position;
 
@@ -326,7 +323,7 @@ class Passenger extends PhysicalThing {
   drawDialogue() {
     if (this.dialogue) {
       let string = this.dialogue.substring(0, this.dialogue.length * (this.dialogueTimer*4/this.dialogueDuration));
-      if (player && this.inSameScreen(player)) {
+      if (player && this.isAudibleTo(player)) {
         if (
           this.previousDialogueString && this.previousDialogueString != string || 
           !this.previousDialogueString && string.length > 0
@@ -456,16 +453,17 @@ class Passenger extends PhysicalThing {
         } else if (confiner.isPlatform) {
           if (confiner == platform) {
             let platformCenter = platform.position.add(platform.size.div(2));
-            let info = null;
+            let train;
 
-            for (let i of this.scene.trainsHere) {
-              if (i.scene == scene && i.scene.doors[i.index % 2].open) {
-                info = i;
+            for (let t of this.scene.trainsHere) {
+              let doorIndex = t.currentData.direction > 0 ? 1 : 0;
+              if (t.scene == scene && t.scene.doors[doorIndex % 2].open) {
+                train = t;
               }
             }
 
-            if (info) {
-              let desiredPosition = platformCenter.add(new Vector2((platform.size.x/2 + 30) * info.data.direction, 0));
+            if (train) {
+              let desiredPosition = platformCenter.add(new Vector2((platform.size.x/2 + 30) * train.currentData.direction, 0));
               direction = desiredPosition.sub(this.position);
 
               if (this.linkedScene == scene) {
@@ -635,13 +633,14 @@ class Passenger extends PhysicalThing {
 
         let trainHere = null;
         let direction;
-        for (let info of this.scene.trainsHere) {
+        for (let train of this.scene.trainsHere) {
+          let doorIndex = train.currentData.direction > 0 ? 1 : 0;
           if (
-            info.scene.train.line == line &&
-            info.scene.doors[info.index % 2].open
+            train.scene.train.line == line &&
+            train.scene.doors[doorIndex].open
           ) {
-            trainHere = info.scene.train;
-            direction = info.data.direction;
+            trainHere = train.scene.train;
+            direction = train.currentData.direction;
             break;
           }
         }
@@ -797,13 +796,14 @@ class Passenger extends PhysicalThing {
 
             let trainHere = null;
             // let trainDoor;
-            for (let info of this.scene.trainsHere) {
+            for (let train of this.scene.trainsHere) {
+              let doorIndex = train.currentData.direction > 0 ? 1 : 0;
               if (
-                info.scene.train.line == line &&
-                info.data.direction == direction &&
-                info.scene.doors[info.index % 2].open
+                train.scene.train.line == line &&
+                train.currentData.direction == direction &&
+                train.scene.doors[doorIndex % 2].open
               ) {
-                trainHere = info.scene.train;
+                trainHere = train.scene.train;
                 break;
               }
             }

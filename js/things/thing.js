@@ -37,14 +37,17 @@ class Thing {
   mouseCollides() {
     if (this == player) return false;
 
-    let position = this.getScreenPosition();
-    let m = mouse.gamePosition;
+    let covered = this.scene.tag == "train" && !this.scene.linkedScene && this.scene != subway.currentScene;
+    if (player && !covered && this.inSameScreen(player)) {
+      let position = this.getScreenPosition();
+      let m = mouse.gamePosition;
 
-    if (position && m) {
-      if (this.radius) {
-        return pointInCircle(m, position, this.radius);
-      } else if (this.size) {
-        return m.x >= position.x && m.y >= position.y && m.x <= position.x + this.size.x && m.y <= position.y + this.size.y;
+      if (position && m) {
+        if (this.radius) {
+          return pointInCircle(m, position, this.radius);
+        } else if (this.size) {
+          return m.x >= position.x && m.y >= position.y && m.x <= position.x + this.size.x && m.y <= position.y + this.size.y;
+        }
       }
     }
   }
@@ -74,56 +77,26 @@ class Thing {
     if (scene.tag == "station") {
       return this.position;
     } else if (scene.tag == "train") {
-      if (scene.linkedScene) {
-        return this.position.add(scene.linkOffset);
-      } else {
-        return this.position;
-      }
+      let stationScene = scene.getNearbyStop().scene;
+      let stationOffset = stationScene.getTrainPosition(scene.train).add(stationScene.getTrainTravelVector(scene.train));
+      return this.position.add(stationOffset);
     }
   }
 
   getScreenPosition() {
-    let currentScene = subway.currentScene;
-    let scene = this.scene;
-
-    if (scene.tag == "station") {
-      if (currentScene == scene) {
-        return this.position;
-      } else if (currentScene.tag == "train" && currentScene.linkedScene == scene) {
-        return this.position;
-      }
-    } else if (scene.tag == "train") {
-      if (scene.linkedScene) {
-        if (currentScene == scene.linkedScene) {
-          return this.position.add(scene.cameraOffset);
-        } else if (currentScene.tag == "train" && currentScene.linkedScene == scene.linkedScene) {
-          return this.position.add(scene.cameraOffset);
-        }
-      } else if (currentScene == scene) {
-        return this.position.add(scene.cameraOffset);
-      }
-    }
+    return this.position.add(this.scene.getOffset());
   }
 
   inSameScreen(thing) {
-    if (thing.scene == this.scene) {
-      return true;
-    }
+    return this.scene.inSameScreen(thing.scene);
+  }
 
-    if (this.scene.tag == "station") {
-      if (thing.scene.linkedScene == this.scene) {
-        return true;
-      }
-    } else if (this.scene.tag == "train" && this.scene.linkedScene) {
-      let stationScene = this.scene.linkedScene;
-      if (thing.scene == stationScene) {
-        return true;
-      } else if (thing.scene.tag == "train" && thing.scene.linkedScene == stationScene) {
-        return true;
-      }
-    }
+  isAudibleTo(thing) {
+    return this.scene.isAudibleTo(thing.scene);
+  }
 
-    return false;
+  hasPathTo(thing) {
+    return this.scene.hasPathTo(thing.scene);
   }
 }
 

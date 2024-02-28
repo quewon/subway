@@ -632,7 +632,7 @@ class VendingMachine extends Trinket {
   updateDialogue(dt) {
     if (this.dialogue) {
       this.visibleDialogue = this.dialogue.substring(0, this.dialogue.length * (this.dialogueTimer*3/this.dialogueDuration));
-      if (player && this.inSameScreen(player)) {
+      if (player && this.isAudibleTo(player)) {
         if (
           this.previousVisibleDialogue && this.previousVisibleDialogue != this.visibleDialogue || 
           !this.previousVisibleDialogue && this.visibleDialogue.length > 0

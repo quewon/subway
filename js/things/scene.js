@@ -6,7 +6,6 @@ class Scene {
     this.color = new RGBA();
     this.confiners = confiners || [new RectConfiner()];
     this.doors = doors || [];
-    this.cameraOffset = new Vector2();
     this.setSize();
 
     this.notebook = new ImageData(1, 1);
@@ -61,7 +60,6 @@ class Scene {
   }
 
   draw() {
-    this.camera();
     this.drawConfiners();
     this.drawThings();
     this.drawUI();
@@ -77,11 +75,37 @@ class Scene {
     }
   }
 
-  getConfinerAtMouse() {
-    let offset = this.cameraOffset;
-    if (this.linkedScene) {
-      offset = offset.add(this.linkedScene.cameraOffset);
+  getOffset() {
+    let offset = new Vector2();
+    let currentScene = subway.currentScene;
+
+    if (currentScene == this) {
+      if (this.tag == "train") {
+        return this.getTrainOffset();
+      }
+    } else {
+      if (currentScene.tag == "station") {
+        if (this.tag == "train") {
+          return currentScene.getTrainPosition(this.train).add(currentScene.getTrainTravelVector(this.train));
+        }
+      } else if (currentScene.tag == "train") {
+        if (this.tag == "station") {
+          return currentScene.getDrawOffset();
+        } else if (this.tag == "train") {
+          let a = this.getNearbyStop().scene;
+          let b = currentScene.getNearbyStop().scene;
+          if (a == b) {
+            return a.getTrainPosition(this.train).add(a.getTrainTravelVector(this.train));
+          }
+        }
+      }
     }
+
+    return offset;
+  }
+
+  getConfinerAtMouse() {
+    let offset = this.getOffset();
     for (let confiner of this.confiners) {
       if (confiner.containsMouse(offset)) {
         return confiner;
@@ -104,40 +128,6 @@ class Scene {
       context.restore();
     }
   }
-  
-  getCameraOffset() {
-    let cameraOffset = new Vector2();
-
-    let ww = window.innerWidth * GAME_SCALE;
-    let wh = window.innerHeight * GAME_SCALE;
-    let sw = this.size.x;
-    let sh = this.size.y;
-    if (sw > ww) {
-      let offset = 0;
-      if (Math.abs(player.position.x) + ww/2 > sw/2) {
-        offset = Math.sign(player.position.x) * (-sw/2 + ww/2) + player.position.x;
-      }
-      cameraOffset = new Vector2(-player.position.x + offset, 0);
-    }
-
-    if (sh > wh) {
-      let offset = 0;
-      if (Math.abs(player.position.y) + wh/2 > sh/2) {
-        offset = Math.sign(player.position.y) * (-sh/2 + wh/2) + player.position.y;
-      }
-      cameraOffset = new Vector2(0, -player.position.y + offset);
-    }
-
-    return cameraOffset;
-  }
-
-  camera() {
-    this.cameraOffset = this.getCameraOffset();
-
-    if (player && player.scene == this) {
-      context.translate(this.cameraOffset.x, this.cameraOffset.y);
-    }
-  }
 
   update(dt) {
     this.updateThings(dt);
@@ -146,32 +136,66 @@ class Scene {
   }
 
   updateMouseInteraction() {
-    if (
-      subway.currentScene == this ||
-      subway.currentScene.tag == "station" && this.tag == "train"   && this.linkedScene == subway.currentScene ||
-      subway.currentScene.tag == "train"   && this.tag == "station" && this == subway.currentScene.linkedScene ||
-      subway.currentScene.tag == "train"   && this.tag == "train"   && this.linkedScene == subway.currentScene.linkedScene
-    ) {
-      
-    } else {
-      return;
-    }
-
     if (mouse.confinerScene) {
-      let m = mouse.gamePosition.sub(mouse.confinerScene.cameraOffset);
-      if (player && m.distanceTo(player.position) >= player.avoidanceRadius && mouse.down && !player.interacting) {
-        let scene = mouse.confinerScene;
-
-        player.playerDestination = m;
-        player.playerDestinationScene = scene;
+      if (player && mouse.down) {
+        player.playerDestination = mouse.gamePosition.sub(mouse.confinerScene.getOffset());
+        player.playerDestinationScene = mouse.confinerScene;
         player.playerDestinationConfiner = mouse.confiner;
 
         if (player.ghost) {
           player.ghost.uneat(player);
-          player.applyForce(player.playerDestination.sub(player.position).normalize().div(300));
+          player.applyForce(mouse.gamePosition.sub(player.getScreenPosition()).normalize().div(300));
         }
       }
     }
+
+    if (player && player.playerDestinationScene && !player.playerDestinationScene.hasPathTo(subway.currentScene)) {
+      player.playerDestination = null;
+      player.playerDestinationScene = null;
+      player.playerDestinationConfiner = null;
+    }
+  }
+
+  inSameScreen(scene) {
+    if (scene == this) return true;
+    if (scene.tag == "station") {
+      if (this.tag == "station") {
+        return false;
+      } else if (this.tag == "train" && this.getNearbyStop().scene == scene) {
+        return true;
+      }
+    } else {
+      if (this.tag == "station") {
+        return scene.getNearbyStop().scene == this;
+      } else if (this.tag == "train") {
+        return this.getNearbyStop() == scene.getNearbyStop();
+      }
+    }
+
+    return false;
+  }
+  
+  isAudibleTo(scene) {
+    if (!this.inSameScreen(scene)) return false;
+    if (scene == this) return true;
+    
+    if (scene.tag == "train" && scene.linkedScene) {
+      if (this.tag == "station" && this == scene.linkedScene) {
+        return true;
+      } else if (this.tag == "train" && this.linkedScene == scene.linkedScene) {
+        return true;
+      }
+    } else if (scene.tag == "station") {
+      if (this.tag == "train" && this.linkedScene == scene) {
+        return true;
+      }
+    }
+    
+    return false;
+  }
+
+  hasPathTo(scene) {
+    return this.isAudibleTo(scene);
   }
 
   updateThings(dt) {
@@ -422,56 +446,51 @@ class StationScene extends Scene {
 
   getTrainsHere() {
     this.trainsHere = [];
-    let lines = this.station.lines;
-    let lineIndex = 0;
-    for (let line of lines) {
+    for (let lineIndex = 0; lineIndex < this.station.lines.length; lineIndex++) {
+      let line = this.station.lines[lineIndex];
       for (let train of line.trains) {
-        let data = train.currentData;
-        if (!data) continue;
-        if (
-          data.prev_stop == this.station && !data.stopped ||
-          data.this_stop == this.station
-        ) {
-          let trainIndex = lineIndex * 2;
-          if (data.direction > 0) {
-            trainIndex++;
-          }
-
-          let offset = new Vector2();
-          if (!data.stopped) {
-            let t = data.t;
-
-            if (data.this_stop == this.station) {
-              t -= 1;
-            }
-
-            let totalDistance;
-            if (data.prev_stop == null || data.this_stop == null) {
-              totalDistance = train.line.subway.stationSpacing;
-            } else {
-              totalDistance = data.prev_stop.position.sub(data.this_stop.position).magnitude();
-            }
-
-            let traveled = lerp(0, totalDistance, t);
-
-            const worldScale = 70;
-
-            offset.y = data.direction * traveled * worldScale;
-          }
-          offset = offset.add(this.trainPositions[trainIndex]);
-
-          train.scene.anticipatedStationOffset = offset;
-
-          this.trainsHere.push({
-            scene: train.scene,
-            position: offset,
-            data: data,
-            index: trainIndex
-          });
+        let trainStop = train.scene.getNearbyStop();
+        if (trainStop == this.station) {
+          this.trainsHere.push(train);
         }
       }
-      lineIndex++;
     }
+  }
+
+  getTrainPosition(train) {
+    let lineIndex = this.station.lines.indexOf(train.line);
+    let index = lineIndex * 2;
+    if (train.currentData && train.currentData.direction == 1) index++;
+    return this.trainPositions[index];
+  }
+
+  getTrainTravelVector(train) {
+    let travel = new Vector2();
+    let data = train.currentData;
+
+    if (!data.stopped) {
+      let t = data.t;
+      if (
+        data.this_stop == this.station ||
+        !data.this_stop && this.isOgygiaScene
+      ) {
+        t -= 1;
+      }
+
+      let totalDistance;
+      if (data.prev_stop == null || data.this_stop == null) {
+        totalDistance = train.line.subway.stationSpacing;
+      } else {
+        totalDistance = data.prev_stop.position.sub(data.this_stop.position).magnitude();
+      }
+
+      let traveled = lerp(0, totalDistance, t);
+      const worldScale = 70;
+
+      travel.y = data.direction * traveled * worldScale;
+    }
+
+    return travel;
   }
 
   setConfinerScene() {
@@ -479,11 +498,11 @@ class StationScene extends Scene {
     if (mouse.confiner) {
       mouse.confinerScene = this;
     } else {
-      for (let info of this.trainsHere) {
-        if (!info.data.doors_open) continue;
-        mouse.confiner = info.scene.getConfinerAtMouse();
+      for (let train of this.trainsHere) {
+        if (!train.currentData.doors_open && train.scene != subway.currentScene) continue;
+        mouse.confiner = train.scene.getConfinerAtMouse();
         if (mouse.confiner) {
-          mouse.confinerScene = info.scene;
+          mouse.confinerScene = train.scene;
           return;
         }
       }
@@ -503,22 +522,12 @@ class StationScene extends Scene {
     this.updateThings(dt);
     this.confineThings(dt);
 
-    for (let info of this.trainsHere) {
-      info.scene.updateSound();
-    }
-
     this.updateMouseInteraction();
   }
 
   draw() {
-    this.camera();
-
     this.drawName();
 
-    if (subway.shadowsEnabled) {
-      this.drawConfinerShadows();
-      this.drawTrainsShadows();
-    }
     this.drawTrains();
     this.drawConfiners();
     this.drawFloorLines();
@@ -533,49 +542,38 @@ class StationScene extends Scene {
   }
 
   updateDoors(dt) {
-    for (let info of this.trainsHere) {
-      let data = info.data;
-      if (data.stopped && data.this_stop == this.station) {
-        let index = info.index;
+    for (let train of this.trainsHere) {
+      let data = train.currentData;
+      if (
+        data.stopped && 
+        (
+          !this.isOgygiaScene && data.this_stop == this.station ||
+          this.isOgygiaScene && !data.this_stop
+        )
+      ) {
+        let scene = train.scene;
+        let position = this.getTrainPosition(train).add(this.getTrainTravelVector(train));
+        let doorIndex = data.direction > 0 ? 1 : 0;
+        let stationDoorIndex = this.station.lines.indexOf(train.line) * 2 + doorIndex;
 
         if (data.doors_open) {
-          info.scene.openDoor(index % 2);
-          this.openDoor(index);
+          scene.openDoor(doorIndex % 2);
+          this.openDoor(stationDoorIndex);
 
-          this.doors[index].linkToScene(info.scene, info.position.mul(-1));
-          info.scene.doors[index%2].linkToScene(this, info.position);
-          info.scene.linkToScene(this, info.position);
+          this.doors[stationDoorIndex].linkToScene(scene, position.mul(-1));
+          scene.doors[doorIndex%2].linkToScene(this, position);
+          scene.linkToScene(this, position);
         } else {
-          this.closeDoor(index);
-          if (info.scene.linkedScene == this) {
-            info.scene.closeDoors();
-            info.scene.unlink();
+          this.closeDoor(stationDoorIndex);
+          if (scene.linkedScene == this) {
+            scene.closeDoors();
+            scene.unlink();
             for (let thing of this.things) {
-              if (thing.linkedScene == info.scene) thing.unlink();
+              if (thing.linkedScene == scene) thing.unlink();
             }
           }
         }
       }
-    }
-  }
-
-  drawConfinerShadows() {
-    for (let confiner of this.confiners) {
-      confiner.drawShadow();
-    }
-  }
-
-  drawTrainsShadows() {
-    for (let info of this.trainsHere) {
-      this.drawTrainShadow(info);
-    }
-  }
-
-  drawTrains() {
-    for (let info of this.trainsHere) {
-      let offset = info.scene.getCameraOffset().add(info.scene.getTrainOffset());
-      info.scene.cameraOffset = offset;
-      this.drawTrain(info);
     }
   }
 
@@ -641,17 +639,11 @@ class StationScene extends Scene {
       thing.drawLabels();
     }
 
-    for (let info of this.trainsHere) {
-      let data = info.data;
-      let offset = info.position;
-      let scene = info.scene;
-
+    for (let train of this.trainsHere) {
+      let offset = this.getTrainPosition(train).add(this.getTrainTravelVector(train));
       context.save();
-
       context.translate(offset.x, offset.y);
-
-      scene.drawLabels();
-
+      train.scene.drawLabels();
       context.restore();
     }
 
@@ -670,73 +662,56 @@ class StationScene extends Scene {
       thing.drawUI();
     }
 
-    for (let info of this.trainsHere) {
-      let data = info.data;
-      let offset = info.position;
-      let scene = info.scene;
+    for (let train of this.trainsHere) {
+      let offset = this.getTrainPosition(train).add(this.getTrainTravelVector(train));
 
       context.save();
+      context.translate(offset.x, offset.y);
+      train.scene.drawUI();
+      context.restore();
+    }
+  }
 
+  drawTrains() {
+    for (let train of this.trainsHere) {
+      let offset = this.getTrainPosition(train).add(this.getTrainTravelVector(train));
+
+      context.save();
       context.translate(offset.x, offset.y);
 
-      scene.drawUI();
+      let data = train.currentData;
+      if (!data.stopped) {
+        let t = data.t;
+        if (
+          (!this.isOgygiaScene && data.this_stop != this.station) ||
+          (this.isOgygiaScene && data.this_stop)
+        ) t -= 1;
+        context.globalAlpha = lerp(0, 1, t * 2);
+      }
+
+      let scene = train.scene;
+      let doorIndex = data.direction > 0 ? 1 : 0;
+      if (scene.doors[doorIndex].open || scene == subway.currentScene) {
+        scene.drawTrain();
+        scene.drawConfiners();
+      } else {
+        scene.drawTrain(true);
+      }
 
       context.restore();
     }
   }
 
-  drawTrainShadow(info) {
-    let data = info.data;
-    let offset = info.position;
-    let scene = info.scene;
-
-    context.save();
-
-    context.translate(offset.x, offset.y);
-
-    if (!info.data.stopped) {
-      let t = info.data.t;
-      if (info.data.this_stop != this.station) t -= 1;
-      context.globalAlpha = lerp(0, 1, t * 2);
-    }
-
-    scene.drawShadow();
-
-    context.restore();
-  }
-
-  drawTrain(info) {
-    let data = info.data;
-    let offset = info.position;
-    let scene = info.scene;
-
-    context.save();
-
-    context.translate(offset.x, offset.y);
-
-    if (!info.data.stopped) {
-      let t = info.data.t;
-      if (info.data.this_stop != this.station) t -= 1;
-      context.globalAlpha = lerp(0, 1, t * 2);
-    }
-
-    if (scene.doors[info.index % 2].open) {
-      scene.drawTrain();
-      scene.drawConfiners();
-    } else {
-      scene.drawTrain(true);
-    }
-
-    context.restore();
-  }
-
   drawTrainsThings() {
-    for (let info of this.trainsHere) {
-      if (!info.scene.doors[info.index % 2].open) continue;
-      let offset = info.position;
+    for (let train of this.trainsHere) {
+      let scene = train.scene;
+      let doorIndex = train.currentData.direction > 0 ? 1 : 0;
+      if (!scene.doors[doorIndex].open && scene != subway.currentScene) continue;
+
+      let offset = this.getTrainPosition(train).add(this.getTrainTravelVector(train));
       context.save();
       context.translate(offset.x, offset.y);
-      info.scene.drawThings();
+      scene.drawThings();
       context.restore();
     }
   }
@@ -756,57 +731,10 @@ class OgygiaScene extends StationScene {
   constructor(ogygia) {
     super(ogygia);
 
+    this.isOgygiaScene = true;
+
     for (let confiner of this.confiners) {
       confiner.wallColor = OGYGIA_COLOR;
-    }
-  }
-
-  getTrainsHere() {
-    this.trainsHere = [];
-    let lines = this.station.lines;
-    let lineIndex = 0;
-    for (let line of lines) {
-      for (let train of line.trains) {
-        let data = train.currentData;
-        if (!data) continue;
-        if (
-          !data.prev_stop && !data.stopped ||
-          !data.this_stop
-        ) {
-          let trainIndex = lineIndex * 2;
-          if (data.direction > 0) {
-            trainIndex++;
-          }
-
-          let offset = new Vector2();
-          if (!data.stopped) {
-            let t = data.t;
-
-            if (!data.this_stop) {
-              t -= 1;
-            }
-
-            let totalDistance = train.line.subway.stationSpacing;
-
-            let traveled = lerp(0, totalDistance, t);
-
-            const worldScale = 70;
-
-            offset.y = data.direction * traveled * worldScale;
-          }
-          offset = offset.add(this.trainPositions[trainIndex]);
-
-          train.scene.anticipatedStationOffset = offset;
-
-          this.trainsHere.push({
-            scene: train.scene,
-            position: offset,
-            data: data,
-            index: trainIndex
-          });
-        }
-      }
-      lineIndex++;
     }
   }
 
@@ -860,33 +788,7 @@ class OgygiaScene extends StationScene {
   }
 
   drawName() {
-    subway.drawStationInfo("this stop is", "station?");
-  }
-
-  updateDoors(dt) {
-    for (let info of this.trainsHere) {
-      let data = info.data;
-      if (data.stopped && !data.this_stop) {
-        let index = info.index;
-
-        if (data.doors_open) {
-          info.scene.openDoor(index % 2);
-          this.openDoor(index);
-
-          this.doors[index].linkToScene(info.scene, info.position.mul(-1));
-          info.scene.doors[index%2].linkToScene(this, info.position);
-
-          info.scene.linkToScene(this, info.position);
-        } else {
-          info.scene.closeDoors();
-          this.closeDoor(index);
-          info.scene.unlink();
-          for (let thing of this.things) {
-            if (thing.linkedScene == info.scene) thing.unlink();
-          }
-        }
-      }
-    }
+    subway.drawStationInfo("station?");
   }
 }
 
@@ -950,36 +852,66 @@ class TrainScene extends Scene {
     }
   }
 
+  getNearbyStop() {
+    let data = this.train.currentData;
+    let t = data.unsmoothed_t;
+    let stop;
+
+    if (data.stopped) {
+      stop = data.this_stop;
+    } else {
+      if (t > .5) {
+        stop = data.this_stop;
+      } else {
+        stop = data.prev_stop;
+      }
+    }
+    if (!stop) stop = this.line.ogygia;
+
+    return stop;
+  }
+
   getTrainOffset() {
     let offset = new Vector2();
     let data = this.train.currentData;
-    if (data && this.anticipatedStationOffset) {
-      offset = offset.lerp(this.anticipatedStationOffset, data.door_t);
+
+    if (data) {
+      let t = data.unsmoothed_t;
+      let stop = this.getNearbyStop();
+
+      if (!data.stopped && t > .5) {
+        t = 1 - t;
+      }
+
+      let trainPosition = stop.scene.getTrainPosition(this.train);
+      t = Math.min(1, t * 7);
+      t = smoothstep(t);
+      offset = trainPosition.lerp(offset, t);
+
+      this.subtleFactor = t;
     }
+
     return offset;
   }
 
+  getDrawOffset() {
+    let stop = this.getNearbyStop();
+    let trainPosition = stop.scene.getTrainPosition(this.train);
+    let scene = stop.scene;
+    let a = scene.getTrainTravelVector(this.train).add(new Vector2().lerp(trainPosition, this.subtleFactor));
+    let b = this.getTrainOffset().sub(trainPosition);
+    return new Vector2(b.x, -a.y);
+  }
+
   draw() {
-    if (this.linkedScene) {
-      this.linkedScene.draw();
-    } else {
-      this.camera();
-      this.cameraOffset = this.cameraOffset.add(this.getTrainOffset());
+    let offset = this.getDrawOffset();
+    let stop = this.getNearbyStop();
+    let scene = stop.scene;
 
-      context.save();
-
-      context.translate(this.cameraOffset.x, this.cameraOffset.y);
-      this.drawTrack();
-      if (subway.shadowsEnabled) this.drawShadow();
-      this.drawTrain();
-      this.drawConfiners();
-      this.drawThings();
-      this.drawLabels();
-      this.drawUI();
-
-      context.restore();
-      subway.drawStationInfo();
-    }
+    context.save();
+    context.translate(offset.x, offset.y);
+    scene.draw();
+    context.restore();
   }
 
   drawTrack() {
@@ -993,17 +925,6 @@ class TrainScene extends Scene {
     context.moveTo(0, -window.innerHeight * GAME_SCALE);
     context.lineTo(0, window.innerHeight * GAME_SCALE);
     context.stroke();
-  }
-
-  drawShadow() {
-    context.translate(this.jiggleOffset.x, this.jiggleOffset.y);
-
-    context.fillStyle = SHADOW_COLOR;
-    context.beginPath();
-    context.arc(SHADOW_DEPTH/2, -this.size.y/2 + SHADOW_DEPTH/2, this.size.x/2, 0, TWOPI);
-    context.arc(SHADOW_DEPTH/2, this.size.y/2 + SHADOW_DEPTH/2, this.size.x/2, 0, TWOPI);
-    context.rect(-this.size.x/2 + SHADOW_DEPTH/2, -this.size.y/2 + SHADOW_DEPTH/2, this.size.x, this.size.y);
-    context.fill();
   }
 
   drawTrain(covered) {
@@ -1052,14 +973,8 @@ class TrainScene extends Scene {
     }
 
     if (subway.currentScene == this) {
-      if (this.linkedScene) {
-        this.linkedScene.setConfinerScene();
-      } else {
-        mouse.confiner = this.getConfinerAtMouse(this.cameraOffset);
-        if (mouse.confiner) {
-          mouse.confinerScene = this;
-        }
-      }
+      let stationScene = this.getNearbyStop().scene;
+      stationScene.setConfinerScene();
     }
  
     this.updateThings(dt);
@@ -1154,11 +1069,14 @@ class TrainScene extends Scene {
         );
       }
     } else {
+      let tunnelVolume = t<.5 ? lerp(0, 1, t * 2) : lerp(1, 0, (t-.5) * 2);
       this.setNoiseLayersVolume(
         1,
         t<.5 ? lerp(1, 0, t * 2) : lerp(0, 1, (t-.5) * 2),
-        t<.5 ? lerp(0, 1, t * 2) : lerp(1, 0, (t-.5) * 2)
+        tunnelVolume
       );
+
+      this.tunnelFactor = tunnelVolume;
     }
 
     if (this.previousDoorsOpen && !data.doors_open) {

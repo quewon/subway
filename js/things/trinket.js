@@ -2,7 +2,10 @@ class Trinket extends PhysicalThing {
     constructor(p) {
         super(p);
         p = p || {};
+
         this.linkedPassenger = null;
+        this.linkHowl = null;
+        this.unlinkHowl = null;
     }
   
     deselect() {
@@ -98,32 +101,29 @@ class Trinket extends PhysicalThing {
     }
   
     updateLink() {
-        if (player && player.wantsToLinkTo == this && player.scene == this.scene) {
+        if (player && player.wantsToLinkTo == this && this.inSameScreen(player)) {
+            let readyToLink = false;
             if (this.radius) {
-                if (this.position.distanceTo(player.position) <= this.radius + player.radius) {
-                    this.linkedPassenger = player;
-                    player.playerDestination = null;
-                    player.wantsToLinkTo = null;
-                    if (this.linkHowl) {
-                        let id = this.linkHowl.play();
-                        let center = this.getGlobalPosition();
-                        if (this.size) center = center.add(this.size.div(2));
-                        applySpacialAudio(this.linkHowl, id, center, player.getGlobalPosition(), 200);
-                    }
-                }
-            } else {
-                if (circleRect(player.position, player.radius, this.position, this.size)) {
-                    this.linkedPassenger = player;
-                    player.playerDestination = null;
-                    player.wantsToLinkTo = null;
-                    if (this.linkHowl) {
-                        let id = this.linkHowl.play();
-                        let center = this.getGlobalPosition();
-                        if (this.size) center = center.add(this.size.div(2));
-                        applySpacialAudio(this.linkHowl, id, center, player.getGlobalPosition(), 200);
-                    }
+                readyToLink = this.getGlobalPosition().distanceTo(player.getGlobalPosition()) <= this.radius + player.radius;
+            } else if (this.size) {
+                readyToLink = circleRect(player.getGlobalPosition(), player.radius, this.getGlobalPosition(), this.size);
+            }
+
+            if (readyToLink) {
+                this.linkedPassenger = player;
+                player.playerDestination = null;
+                player.wantsToLinkTo = null;
+                if (this.linkHowl) {
+                    let id = this.linkHowl.play();
+                    let center = this.getGlobalPosition();
+                    if (this.size) center = center.add(this.size.div(2));
+                    applySpacialAudio(this.linkHowl, id, center, player.getGlobalPosition(), 200);
                 }
             }
+        }
+
+        if (this.linkedPassenger && !this.hasPathTo(this.linkedPassenger)) {
+            this.deselect();
         }
 
         if (this.ghost && this.linkedPassenger) {
@@ -183,6 +183,9 @@ class Radio extends Trinket {
 
         this.musicTitle = soundslist["radio"][soundslist["radio"].length * Math.random() | 0];
         this.soundHowl = sounds["radio"][this.musicTitle];
+
+        this.linkHowl = sounds.sfx["click3"];
+        this.unlinkHowl = sounds.sfx["click1"];
     }
 
     drawSelf() {
@@ -265,7 +268,7 @@ class Radio extends Trinket {
     }
 
     updateSound() {
-        let withPlayer = player && this.inSameScreen(player);
+        let withPlayer = player && this.isAudibleTo(player);
         if (withPlayer && !this.soundId && this.linkedPassenger) {
             this.startPlaying();
         } else if (this.soundId && (!withPlayer || !this.linkedPassenger)) {
