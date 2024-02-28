@@ -19,6 +19,12 @@ class Scene {
     }
   }
 
+  drawLabels() {
+    for (let thing of this.things) {
+      thing.drawLabels();
+    }
+  }
+
   drawUI() {
     for (let thing of this.things) {
       thing.drawUI();
@@ -58,7 +64,7 @@ class Scene {
     this.camera();
     this.drawConfiners();
     this.drawThings();
-    this.drawThingsUI();
+    this.drawUI();
   }
 
   drawConfiners() {
@@ -390,6 +396,13 @@ class StationScene extends Scene {
         direction: -1
       });
 
+      if (width > 80) {
+        new VendingMachine({
+          scene: this,
+          position: new Vector2(x + width/2 - 15, y + (lineIndex%2==0 ? 20 : height - 20) - 20)
+        });
+      }
+
       lineIndex++;
     }
   }
@@ -511,18 +524,7 @@ class StationScene extends Scene {
     this.drawFloorLines();
     this.drawTrainsThings();
     this.drawThings();
-
-    if (mouse.confinerScene == this) {
-      for (let i=0; i<this.platformConfiners.length; i++) {
-        let platform = this.platformConfiners[i];
-        if (mouse.confiner == platform) {
-          let line = this.station.lines[i];
-          this.drawPlatformInfo(platform, line, 1);
-          this.drawPlatformInfo(platform, line, -1);
-        }
-      }
-    }
-
+    
     this.drawUI();
   }
 
@@ -542,14 +544,15 @@ class StationScene extends Scene {
 
           this.doors[index].linkToScene(info.scene, info.position.mul(-1));
           info.scene.doors[index%2].linkToScene(this, info.position);
-
           info.scene.linkToScene(this, info.position);
         } else {
-          info.scene.closeDoors();
           this.closeDoor(index);
-          info.scene.unlink();
-          for (let thing of this.things) {
-            if (thing.linkedScene == info.scene) thing.unlink();
+          if (info.scene.linkedScene == this) {
+            info.scene.closeDoors();
+            info.scene.unlink();
+            for (let thing of this.things) {
+              if (thing.linkedScene == info.scene) thing.unlink();
+            }
           }
         }
       }
@@ -634,6 +637,35 @@ class StationScene extends Scene {
   }
 
   drawUI() {
+    for (let thing of this.things) {
+      thing.drawLabels();
+    }
+
+    for (let info of this.trainsHere) {
+      let data = info.data;
+      let offset = info.position;
+      let scene = info.scene;
+
+      context.save();
+
+      context.translate(offset.x, offset.y);
+
+      scene.drawLabels();
+
+      context.restore();
+    }
+
+    if (mouse.confinerScene == this) {
+      for (let i=0; i<this.platformConfiners.length; i++) {
+        let platform = this.platformConfiners[i];
+        if (mouse.confiner == platform) {
+          let line = this.station.lines[i];
+          this.drawPlatformInfo(platform, line, 1);
+          this.drawPlatformInfo(platform, line, -1);
+        }
+      }
+    }
+
     for (let thing of this.things) {
       thing.drawUI();
     }
@@ -907,14 +939,10 @@ class TrainScene extends Scene {
   linkToScene(scene, offset) {
     this.linkedScene = scene;
     this.linkOffset = offset;
-
-    this.previousLinkedScene = scene;
-    this.previousLinkOffset = offset;
   }
 
   unlink() {
     if (!this.linkedScene) return;
-    this.previousStationOffset = this.anticipatedStationOffset;
     this.linkedScene = null;
     this.linkOffset = null;
     for (let thing of this.things) {
@@ -934,10 +962,6 @@ class TrainScene extends Scene {
   draw() {
     if (this.linkedScene) {
       this.linkedScene.draw();
-    } else if (this.previousLinkedScene && this.train.currentData.t < .5) {
-      let offset = this.previousStationOffset;
-      context.translate(offset.x, offset.y);
-      this.previousLinkedScene.draw();
     } else {
       this.camera();
       this.cameraOffset = this.cameraOffset.add(this.getTrainOffset());
@@ -950,6 +974,7 @@ class TrainScene extends Scene {
       this.drawTrain();
       this.drawConfiners();
       this.drawThings();
+      this.drawLabels();
       this.drawUI();
 
       context.restore();
@@ -1135,6 +1160,14 @@ class TrainScene extends Scene {
         t<.5 ? lerp(0, 1, t * 2) : lerp(1, 0, (t-.5) * 2)
       );
     }
+
+    if (this.previousDoorsOpen && !data.doors_open) {
+      sounds.sfx["doors close"].play();
+    } else if (!this.previousDoorsOpen && data.doors_open) {
+      sounds.sfx["doors open"].play();
+    }
+
+    this.previousDoorsOpen = data.doors_open;
   }
 
   setNoiseLayersVolume(v1, v2, v3) {

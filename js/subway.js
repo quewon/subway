@@ -21,11 +21,10 @@ class Subway {
     this.mapOpen = false;
     this.mapTimer = 0;
 
-    this.homebase = this.getLargestStation().scene;
-    // this.homebase = this.lines[0].trains[0].scene;
-    // this.homebase = this.lines[0].stations[0].scene;
+    this.homebase = this.lines[0].stations[0].scene;
     // this.homebase = this.lines[0].ogygia.scene;
-    this.currentScene = this.homebase;
+    // this.currentScene = this.lines[0].trains[0].scene;
+    this.currentScene = this.lines[0].trains[0].scene;
   }
 
   setScene(scene) {
@@ -330,7 +329,7 @@ class Subway {
     this.mapOpen = true;
     this.mapTimer = 0;
 
-    sounds.sfx["open map"].play();
+    // sounds.sfx["open map"].play();
   }
 
   closeMap() {
@@ -338,7 +337,7 @@ class Subway {
     this.mapOpen = false;
     this.mapTimer = .5;
 
-    sounds.sfx["close map"].play();
+    // sounds.sfx["close map"].play();
   }
 
   getStationByName(name) {

@@ -6,20 +6,24 @@ class Ghost extends PhysicalThing {
         this.unpushable = true;
 
         this.radius = 30;
+        this.volumeRadius = 300;
         this.speed = p.speed == null ? 3 : p.speed;
 
         this.stomach = [];
         this.stomachCapacity = 10;
+
+        this.soundHowl = sounds["ghost"][sounds["ghost"].length * Math.random() | 0];
     }
 
     drawSelf() {
-        let color = OGYGIA_COLOR;
+        let distance = this.getScreenPosition().distanceTo(player.getScreenPosition());
+        context.globalAlpha = Math.min(Math.max(1 - (distance - this.radius)/this.volumeRadius, 0), 1);
 
-        context.fillStyle = color.toString();
         context.beginPath();
         context.arc(this.position.x, this.position.y, this.radius, 0, TWOPI);
-        context.strokeStyle = context.fillStyle;
+        context.strokeStyle = OGYGIA_COLOR;
         context.stroke();
+        context.globalAlpha = 1;
     }
 
     draw() {
@@ -45,23 +49,37 @@ class Ghost extends PhysicalThing {
 
             this.lookForFood();
         } else {
+            if (this.stomach.length >= this.stomachCapacity) {
+                let expelling = this.stomach[0];
+                this.uneat(expelling);
+                if (expelling.applyForce) {
+                    let center = expelling.position;
+                    if (expelling.size) center = center.add(expelling.size.div(2));
+                    let force = center.sub(this.position).normalize().mul(2);
+                    expelling.applyForce(force);
+                }
+            }
+
             this.lookForOgygia();
         }
 
-        // this.headToDestination();
-
         this.move(dt);
+
+        this.updateSound();
     }
 
     eat(thing) {
         if (this.stomach.indexOf(thing) != -1) return;
-        if (thing.linkedPassenger && !thing.linkedPassenger.ghost) return;
-        if (thing.tag == "ghost") return;
+        if (thing.tag == "ghost" || thing.unpushable) return;
 
         if (thing.ghost) thing.ghost.uneat(thing);
 
         this.stomach.push(thing);
         thing.ghost = this;
+
+        let scene = this.scene;
+        this.exit();
+        this.enter(scene);
     }
 
     uneat(thing) {
@@ -71,203 +89,61 @@ class Ghost extends PhysicalThing {
     }
 
     lookForFood() {
-        let scene = this.scene;
-        if (scene.tag == "train") {
+      let scene = this.scene;
+      if (scene.tag == "train") {
 
-        } else if (scene.tag == "station") {
-            let closestTrainScene;
-            let closestTrainDistance = Infinity;
-            for (let info of scene.trainsHere) {
-                if (info.data.doors_open) {
-                    let distance = this.position.distanceTo(info.position);
-                    if (distance < closestTrainDistance) {
-                        closestTrainScene = info.scene;
-                        closestTrainDistance = distance;
-                    }
+      } else if (scene.tag == "station") {
+        let closestTrainScene;
+        let closestTrainDistance = Infinity;
+        for (let info of scene.trainsHere) {
+            if (info.data.doors_open) {
+                let distance = this.position.distanceTo(info.position);
+                if (distance < closestTrainDistance) {
+                    closestTrainScene = info.scene;
+                    closestTrainDistance = distance;
                 }
             }
-
-            if (closestTrainScene) {
-                this.destination = closestTrainScene;
-            } else {
-
-            }
         }
+
+        if (closestTrainScene) {
+            this.destination = closestTrainScene;
+        } else {
+
+        }
+      }
     }
 
     lookForOgygia() {
 
     }
-    
-    headToPlayerDestination() {
-        let direction = new Vector2();
-    
-        let destination = this.playerDestination;
-        let scene = this.playerDestinationScene;
-    
-        if (scene && this.scene != scene) {
-          if (this.scene.tag == "train") {
-            let train = this.scene.train;
-            let data = train.currentData;
-            let confiner = this.scene.confiners[0];
-            let confinerCenter = confiner.position.add(confiner.size.div(2));
-    
-            if (data.doors_open) {
-              let desiredPosition = new Vector2(confiner.size.x/2 * data.direction * -1, 0).add(confinerCenter);
-              direction = desiredPosition.sub(this.position);
-    
-              let linkedScene = train.scene.linkedScene;
-              let station = linkedScene.station;
-    
-              if (this.linkedScene == linkedScene) {
-                this.moveToLinkedScene();
-                let platform = linkedScene.platformConfiners[station.lines.indexOf(train.line)];
-                this.previousConfiner = platform;
-              }
-            }
-          } else if (this.scene.tag == "station") {
-            let train = scene.train;
-            let line = train.line;
-            let lineIndex = this.scene.station.lines.indexOf(line);
-            let platform = this.scene.platformConfiners[lineIndex];
-    
-            let confiner = this.previousConfiner;
-            if (confiner.isHall) {
-              let hall = confiner;
-              let hallCenter = hall.position;
-              if (this.aimForHallCenter) {
-                let hallRadius;
-                if (hall.radius) {
-                  hallRadius = hall.radius;
-                } else {
-                  hallRadius = Math.min(hall.size.y/2, hall.size.x/2);
-                  hallCenter = hall.position.add(hall.size.div(2));
-                }
-    
-                if (this.position.distanceTo(hallCenter) <= hallRadius/2) {
-                  this.aimForHallCenter = false;
-                }
-    
-                direction = hallCenter.sub(this.position);
-              } else {
-                let platformCenter = platform.position.add(platform.size.div(2));
-                let distance = platformCenter.sub(this.position);
-    
-                if (Math.abs(distance.x) > platform.size.x) {
-                  direction = new Vector2(distance.x, hallCenter.y - this.position.y);
-                } else {
-                  direction = distance;
-                }
-              }
-            } else if (confiner.isPlatform) {
-              if (confiner == platform) {
-                let platformCenter = platform.position.add(platform.size.div(2));
-                let info = null;
-    
-                for (let i of this.scene.trainsHere) {
-                  if (i.scene == scene && i.scene.doors[i.index % 2].open) {
-                    info = i;
-                  }
-                }
-    
-                if (info) {
-                  let desiredPosition = platformCenter.add(new Vector2((platform.size.x/2 + 30) * info.data.direction, 0));
-                  direction = desiredPosition.sub(this.position);
-    
-                  if (this.linkedScene == scene) {
-                    this.moveToLinkedScene();
-                    this.previousConfiner = scene.confiners[0];
-                  }
-                } else {
-                  this.playerDestination = null;
-                  this.playerDestinationScene = null;
-                  this.playerDestinationConfiner = null;
-                }
-              } else {
-                this.aimForHallCenter = true;
-                let confinerCenter = confiner.position.add(confiner.size.div(2));
-                direction = new Vector2(0, Math.sign(-confinerCenter.y));
-              }
-            } else { //bridge
-              let platformCenter = platform.position.add(platform.size.div(2));
-              direction = platformCenter.sub(this.position);
-              direction = new Vector2(direction.x, 0);
-    
-              this.aimForHallCenter = true;
-            }
-          }
-        } else if (destination && this.playerDestinationConfiner) {
-          let confiner = this.previousConfiner;
-          let dconfiner = this.playerDestinationConfiner;
-    
-          if (confiner == dconfiner) {
-            direction = destination.sub(this.position);
-    
-            if (this.position.distanceTo(destination) <= this.radius) {
-              this.playerDestination = null;
-              this.playerDestinationScene = null;
-              this.playerDestinationConfiner = null;
-            }
-          } else {
-            if (this.scene.tag == "station" && dconfiner) {
-              if (confiner.isHall) {
-                let hall = confiner;
-                let hallCenter = hall.position;
-    
-                if (this.aimForHallCenter) {
-                  let hallRadius;
-                  if (hall.radius) {
-                    hallRadius = hall.radius;
-                  } else {
-                    hallRadius = Math.min(hall.size.y/2, hall.size.x/2);
-                    hallCenter = hall.position.add(hall.size.div(2));
-                  }
-      
-                  if (this.position.distanceTo(hallCenter) <= hallRadius/2) {
-                    this.aimForHallCenter = false;
-                  }
-      
-                  direction = hallCenter.sub(this.position);
-                } else {
-                  let center = dconfiner.position;
-                  if (!dconfiner.radius) {
-                    center = center.add(dconfiner.size.div(2));
-                  }
-                  let distance = center.sub(this.position);
-    
-                  if (dconfiner.isPlatform && Math.abs(distance.x) > dconfiner.size.x) {
-                    direction = new Vector2(distance.x, hallCenter.y - this.position.y);
-                  } else {
-                    direction = distance;
-                  }
-                }
-              } else if (confiner.isPlatform) {
-                this.aimForHallCenter = true;
-    
-                if (dconfiner.isHall) {
-                  if (dconfiner.radius) {
-                    this.aimForHallCenter = !circleRect(dconfiner.position, dconfiner.radius, confiner.position, confiner.size);
-                  } else {
-                    this.aimForHallCenter = !rectRect(confiner.position, confiner.size, dconfiner.position, dconfiner.size);
-                  }
-                }
-    
-                let confinerCenter = confiner.position.add(confiner.size.div(2));
-                direction = new Vector2(0, Math.sign(-confinerCenter.y));
-              } else { //bridge
-                let center = dconfiner.position;
-                if (!dconfiner.radius) {
-                  center = center.add(dconfiner.size.div(2));
-                }
-                direction = center.sub(this.position);
-                direction = new Vector2(direction.x, 0);
-      
-                this.aimForHallCenter = true;
-              }
-            }
-          }
+
+    startSinging() {
+        if (this.soundId) return;
+        this.soundId = this.soundHowl.play();
+        this.soundHowl.loop(true, this.soundId);
+    }
+
+    stopSinging() {
+        if (!this.soundId) return;
+        this.soundHowl.stop(this.soundId);
+        this.soundId = null;
+    }
+
+    updateSound() {
+        let withPlayer = player && this.inSameScreen(player);
+        if (withPlayer && !this.soundId) {
+            this.startSinging();
+        } else if (!withPlayer && this.soundId) {
+            this.stopSinging();
         }
-    
-        return direction;
+
+        if (this.soundId && player) {
+            if (player.ghost == this) {
+                this.soundHowl.volume(1, this.soundId);
+                this.soundHowl.stereo(0, this.soundId);
+            } else {
+                applySpacialAudio(this.soundHowl, this.soundId, this.getGlobalPosition(), player.getGlobalPosition(), this.volumeRadius);
+            }
+        }
     }
 }

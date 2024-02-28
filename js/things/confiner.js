@@ -35,10 +35,6 @@ class RectConfiner {
   drawFloors() {
     context.fillStyle = this.floorColor;
 
-    // if (mouse.confiner && mouse.confiner == this) {
-    //   context.fillStyle = "red";
-    // }
-
     context.beginPath();
     context.rect(this.position.x, this.position.y, this.size.x, this.size.y);
     context.fill();
@@ -171,10 +167,7 @@ class CircleConfiner {
 
   drawFloors() {
     context.fillStyle = this.floorColor;
-    // if (mouse.confiner && mouse.confiner == this) {
-    //   context.fillStyle = "red";
-    // }
-
+    
     context.beginPath();
     context.arc(this.position.x, this.position.y, this.radius, 0, TWOPI);
     context.fill();

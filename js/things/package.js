@@ -4,15 +4,19 @@ class Package extends Trinket {
     p = p || {};
 
     this.tag = "package";
+    this.size = new Vector2(15, 15);
 
     //
 
     this.createRecipient(p.recipientStation);
+
+    this.linkHowl = sounds.sfx["pick up box"];
+    this.unlinkHowl = sounds.sfx["drop box"];
   }
 
   find() {
     this.found = true;
-    this.linkedPassenger = null;
+    this.deselect();
   }
 
   select() {
@@ -24,6 +28,15 @@ class Package extends Trinket {
         player.wantsToLinkTo = null;
       } else {
         player.wantsToLinkTo = this;
+        if (this.previousConfiner) {
+            if (this.size) {
+                player.playerDestination = this.position.add(this.size.div(2));
+            } else {
+                player.playerDestination = this.position;
+            }
+            player.playerDestinationScene = this.scene;
+            player.playerDestinationConfiner = this.previousConfiner;
+        }
       }
     }
   }
@@ -69,21 +82,26 @@ class Package extends Trinket {
 
     //
 
+    let prompts = ["in case of loss, please return to:", "this is a package for:", "find me!"];
+    this.prompt = prompts[prompts.length * Math.random() | 0];
+
     context.font = "11px sans-serif";
     context.textAlign = "left";
     context.textBaseline = "top";
-    let measurements = context.measureText("Wherever they may be");
+    let measurements = context.measureText(this.prompt);
     let lineHeight = measurements.fontBoundingBoxDescent + 5;
 
     this.lineHeight = lineHeight;
-    this.infoBoxSize = new Vector2(measurements.width, lineHeight * 3 - 5);
+    this.infoBoxSize = new Vector2(measurements.width, lineHeight * 2 - 5);
     this.infoBoxPadding = new Vector2(lineHeight/2, lineHeight/2);
-    this.size = new Vector2(15, 15);
   }
 
   draw() {
     this.drawLink();
-    
+    this.drawSelf();
+  }
+
+  drawSelf() {
     if (this.ghost) {
       context.strokeStyle = OGYGIA_COLOR;
     } else if (this.linkedPassenger) {
@@ -103,11 +121,10 @@ class Package extends Trinket {
       context.strokeStyle = context.fillStyle = player.ghost ? OGYGIA_COLOR : player.color.toString();
       context.fill();
     }
-
     context.stroke();
   }
 
-  drawUI() {
+  drawLabels() {
     if (this.hovered) this.drawInfo();
   }
 
@@ -142,24 +159,11 @@ class Package extends Trinket {
     let x = rx + this.infoBoxSize.x/2 + this.infoBoxPadding.x;
     let y = ry + this.infoBoxPadding.y;
 
-    context.fillText("This is a package for:", x, y);
+    context.fillText(this.prompt, x, y);
 
     y += this.lineHeight;
 
     context.fillText(this.recipient.name.toUpperCase(), x, y);
-
-    y += this.lineHeight;
-
-    let thirdline;
-
-    let stationName = this.recipient.home.name;
-    if (stationName) {
-      stationName = stationName[0].toUpperCase() + stationName.substring(1);
-      thirdline = "@ "+stationName+" Station";
-    } else {
-      thirdline = "Wherever they may be"
-    }
-    context.fillText(thirdline, x, y);
   }
 }
 
@@ -170,10 +174,6 @@ class Recipient extends Passenger {
 
   deselect() {
     this.resetPlayer();
-
-    // new
-
-    if (this.package) this.label = this.name;
   }
 
   setDestination() {
@@ -235,7 +235,6 @@ class Recipient extends Passenger {
 
     this.package.exit();
     this.package = null;
-    this.label = null;
   }
 }
 
@@ -244,37 +243,39 @@ class Coin extends Trinket {
     p = p || {};
     super(p);
 
+    this.tag = "coin";
     this.radius = 10;
-    this.label = "coin";
+    this.linkHowl = sounds["sfx"]["coin bump"];
+
+    if (player && this.inSameScreen(player)) {
+      let howl = sounds["sfx"]["coin toss"];
+      let id = howl.play();
+      applySpacialAudio(howl, id, this.getGlobalPosition(), player.getGlobalPosition(), 200);
+    }
   }
 
-  draw() {
-    this.drawLink();
-    if (this.linkedPassenger) {
-      context.strokeStyle = this.linkedPassenger.color.toString();
+  drawSelf() {
+    if (this.ghost) {
+        context.strokeStyle = OGYGIA_COLOR;
+    } else if (this.linkedPassenger) {
+        context.strokeStyle = this.linkedPassenger.color.toString();
     } else {
-      context.strokeStyle = LINES_COLOR;
+        context.strokeStyle = LINES_COLOR;
     }
     context.beginPath();
     context.arc(this.position.x, this.position.y, this.radius, 0, TWOPI);
-    context.stroke();
     if (player.wantsToLinkTo == this) {
-      context.fillStyle = player.color.toString();
+      context.fillStyle = context.strokeStyle = player.color.toString();
       context.fill();
     }
+    context.stroke();
 
-    if (this.hovered) {
-      context.fillStyle = LINES_COLOR;
-      context.font = "13px sans-serif";
+    if (player.wantsToLinkTo != this) {
+      context.fillStyle = context.strokeStyle;
+      context.font = "11px serif";
       context.textAlign = "center";
-      context.textBaseline = "top";
-
-      context.strokeStyle = BACKGROUND_COLOR;
-      context.lineWidth = 3;
-      context.strokeText(this.label, this.position.x, this.position.y + this.radius);
-      context.lineWidth = 1;
-
-      context.fillText(this.label, this.position.x, this.position.y + this.radius);
+      context.textBaseline = "middle";
+      context.fillText("100", this.position.x, this.position.y);
     }
   }
 }

@@ -21,8 +21,8 @@
 
   <script type="text/javascript" src="js/util.js"></script>
   <script type="text/javascript" src="js/howler.min.js"></script>
+  
   <script type="text/javascript" src="js/audio.js"></script>
-
   <script type="text/javascript" src="js/img.js"></script>
   <script type="text/javascript" src="js/engine.js"></script>
   <script type="text/javascript" src="js/subway.js"></script>
@@ -116,13 +116,16 @@
           }
         }
 
-        if (Math.random() > .5) {
+        if (
+          Math.random() > .5
+          && station.scene != subway.homebase
+        ) {
           new Ghost({ scene: station.scene });
         }
       }
 
       for (let i=0; i<3; i++) {
-        new Package({ });
+        new Package();
       }
       let randomLine = subway.lines[subway.lines.length * Math.random() | 0];
       let randomOgygia = randomLine.ogygia;
@@ -132,7 +135,7 @@
 
       animate();
       update();
-      document.getElementById("playprompt").innerHTML = "<p>this game has <b>sound</b>.<br><br><b>click</b> to move around.</p>";
+      document.getElementById("playprompt").innerHTML = "<p>this game has sound.<br><br>(<b>volume warning!</b>)<br><br><b>click</b> to move around.</p>";
       document.onmousedown = document.oncontextmenu = function(e) {
         e.preventDefault();
         play();
@@ -140,7 +143,7 @@
     }
 
     function createPlayer() {
-      player = new Passenger({ position: new Vector2() });
+      player = new Passenger({ position: new Vector2(), speed: 7 });
       player.select();
       player.exit();
       player.enter(subway.currentScene);

@@ -4,12 +4,22 @@ class Passenger extends PhysicalThing {
 
     p = p || {};
     this.tag = "passenger";
+    this.name = p.name;
+    this.label = p.label;
+
+    this.colorOrigin = new RGBA();
+    this.color = new RGBA(this.colorOrigin);
 
     this.radius = p.radius == null ? 5 : p.radius;
     this.avoidanceRadius = p.avoidanceRadius == null ? Math.random() * 15 + 5 : p.avoidanceRadius;
     this.avoidMultiplier = .3;
     this.navigationMultiplier = .3;
 
+    let voice = "beep";
+    let random = Math.random();
+    if (random < .2) voice = "beep low";
+    else if (random > .8) voice = "beep high";
+    this.voice = sounds["sfx"][voice];
     this.dialogueRadius = 150;
 
     this.routePreference = Math.random() > .5 ? "simple" : "short";
@@ -69,6 +79,8 @@ class Passenger extends PhysicalThing {
 
   draw() {
     if (player && player == this) {
+      // destination
+
       if (this.playerDestination && this.playerDestinationConfiner && !this.interacting && !this.wantsToLinkTo) {
         let p = this.playerDestination;
         p = p.sub(this.scene.cameraOffset);
@@ -87,6 +99,8 @@ class Passenger extends PhysicalThing {
         context.stroke();
       }
       
+      // mouse
+
       let p = mouse.gamePosition.sub(this.scene.cameraOffset);
       context.strokeStyle = "rgba(0,0,0,.3)";
       context.beginPath();
@@ -99,18 +113,26 @@ class Passenger extends PhysicalThing {
     this.drawSelf();
     this.drawAvoidanceRadius();
 
-    if (this.group) {
+    if (this.group && !this.ghost) {
       this.drawGroupLines();
     }
   }
 
-  drawUI() {
+  drawLabels() {
+    if (this.label) {
+      context.fillStyle = this.ghost ? OGYGIA_COLOR : this.color.toString();
+      context.font = "13px sans-serif";
+      context.textAlign = "center";
+      context.textBaseline = "top";
+      context.fillText(this.label, this.position.x, this.position.y + this.radius);
+    }
+
     this.drawDialogue();
   }
 
   resetPlayer() {
     this.colorOrigin = new RGBA();
-    this.label = null;
+    this.label = this.name;
     this.selected = false;
 
     this.playerDestination = null;
@@ -145,8 +167,6 @@ class Passenger extends PhysicalThing {
     let color = new RGBA(this.colorOrigin);
 
     if (this.collisionsCounter > 0) {
-      this.collisionsCounter--;
-
       color.r += this.collisionsCounter/60;
       color.g += this.collisionsCounter/300;
       color.b += this.collisionsCounter/600;
@@ -165,13 +185,6 @@ class Passenger extends PhysicalThing {
     } else {
       context.strokeStyle = context.fillStyle;
       context.stroke();
-    }
-
-    if (this.label) {
-      context.font = "13px sans-serif";
-      context.textAlign = "center";
-      context.textBaseline = "top";
-      context.fillText(this.label, this.position.x, this.position.y + this.radius);
     }
 
     this.color = color;
@@ -242,15 +255,13 @@ class Passenger extends PhysicalThing {
 
     this.move(dt);
 
-    if (this != player) {
-      this.updateDialogue(dt);
-    }
+    this.updateDialogue(dt);
 
     this.updateInteractionState();
   }
 
   updateDialogue(dt) {
-    if (!this.dialogue && !this.ghost) {
+    if (!this.dialogue && player != this && !this.ghost) {
       if (!this.dialoguePauseTimer) this.dialoguePauseTimer = 0;
       if (!this.dialoguePauseDuration) this.dialoguePauseDuration = 1000 + Math.random() * 30000;
       this.dialoguePauseTimer += dt;
@@ -265,6 +276,9 @@ class Passenger extends PhysicalThing {
           "!",
           "where am i?",
           "where do i go?",
+          "where to go",
+          "where am i going",
+          "how to go home",
           "how to get home",
           "coming through",
           "gotta go",
@@ -274,6 +288,11 @@ class Passenger extends PhysicalThing {
           "hello",
           "hi",
           "huh",
+          "so lost",
+          "hey",
+          "ah",
+          "zzz",
+          "z"
         ]
         let string = dialogue[dialogue.length * Math.random() | 0];
         if (Math.random() > .5) string = "... "+string;
@@ -284,6 +303,14 @@ class Passenger extends PhysicalThing {
         this.dialogue = string;
         this.dialogueTimer = 0;
         this.dialogueDuration = (string.length + 2) * 200;
+
+        let scene = this.scene;
+        this.exit();
+        this.enter(scene);
+        if (this.ghost) {
+          this.ghost.exit();
+          this.ghost.enter(scene);
+        }
       }
     }
     
@@ -298,7 +325,21 @@ class Passenger extends PhysicalThing {
 
   drawDialogue() {
     if (this.dialogue) {
-      let string = this.dialogue.substring(0, this.dialogue.length * (this.dialogueTimer*3/this.dialogueDuration));
+      let string = this.dialogue.substring(0, this.dialogue.length * (this.dialogueTimer*4/this.dialogueDuration));
+      if (player && this.inSameScreen(player)) {
+        if (
+          this.previousDialogueString && this.previousDialogueString != string || 
+          !this.previousDialogueString && string.length > 0
+        ) {
+          let char = string[string.length - 1];
+          if (char && char.match(/[a-z]/i)) {
+            let howl = this.voice;
+            let id = howl.play();
+            applySpacialAudio(howl, id, this.getGlobalPosition(), player.getGlobalPosition(), this.dialogueRadius);
+          }
+        }
+      }
+      this.previousDialogueString = string;
 
       context.font = "italic 11px sans-serif";
       context.textAlign = "left";
@@ -310,26 +351,24 @@ class Passenger extends PhysicalThing {
       let padding = new Vector2(3, 0);
       let box = new Vector2(width + padding.x * 2, height + padding.y * 2);
 
-      let alpha = 1 - player.position.distanceTo(this.position)/this.dialogueRadius;
+      let alpha = 0;
+      if (player && this.inSameScreen(player)) {
+        alpha = 1 - player.getScreenPosition().distanceTo(this.getScreenPosition())/this.dialogueRadius;
+      }
 
-      context.fillStyle = BACKGROUND_COLOR
-      context.strokeStyle = this.color.toString();
+      context.fillStyle = BACKGROUND_COLOR;
+      context.strokeStyle = this.ghost ? OGYGIA_COLOR : this.color.toString();
       context.beginPath();
       let x = this.position.x - box.x/2;
       let y = this.position.y - this.radius * 2 - box.y;
       context.rect(x, y, box.x, box.y);
-      if (alpha > 0) context.fill();
+      if (alpha > .2) context.fill();
 
       context.globalAlpha = Math.min(Math.max(alpha, 0), 1);
       context.stroke();
 
       context.fillStyle = this.color.toString();
       context.fillText(string, x + padding.x, y + padding.y);
-
-      // context.beginPath();
-      // context.moveTo(this.position.x, this.position.y - this.radius * 2);
-      // context.lineTo(this.position.x, this.position.y - this.radius);
-      // context.stroke();
 
       context.globalAlpha = 1;
     }
@@ -363,10 +402,21 @@ class Passenger extends PhysicalThing {
         }
       } else if (this.scene.tag == "station") {
         let train = scene.train;
+        if (!train) {
+          this.playerDestination = null;
+          this.playerDestinationScene = null;
+          this.playerDestinationConfiner = null;
+          return direction;
+        }
         let line = train.line;
+        if (!line) {
+          this.playerDestination = null;
+          this.playerDestinationScene = null;
+          this.playerDestinationConfiner = null;
+          return direction;
+        }
         let lineIndex = this.scene.station.lines.indexOf(line);
-
-        if (!train || !line || lineIndex == -1) {
+        if (lineIndex == -1) {
           this.playerDestination = null;
           this.playerDestinationScene = null;
           this.playerDestinationConfiner = null;
@@ -525,10 +575,10 @@ class Passenger extends PhysicalThing {
 
       let position;
       let radius;
-      if (!thing.radius) {
+      if (thing.size) {
         position = thing.position.add(thing.size.div(2));
         radius = Math.max(thing.size.x, thing.size.y)/2;
-      } else {
+      } else if (thing.radius) {
         position = thing.position;
         radius = thing.radius;
       }

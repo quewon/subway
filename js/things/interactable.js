@@ -22,7 +22,10 @@ class Interactable extends Thing {
 
   deselect() {
     this.selected = false;
-    if (player.interacting == this) player.interacting = null;
+    if (player.interacting == this) {
+      player.interacting = null;
+      player.playerDestination = null;
+    }
   }
 
   select() {
@@ -79,7 +82,7 @@ class Interactable extends Thing {
     }
   }
 
-  drawUI() {
+  drawLabels() {
     this.drawPrompt();
   }
 
@@ -228,8 +231,11 @@ class LineMap extends Interactable {
     this.drawIcon();
   }
 
-  drawUI() {
+  drawLabels() {
     this.drawPrompt();
+  }
+
+  drawUI() {
     if (this.timer > 0) this.drawMap();
   }
 
@@ -473,6 +479,215 @@ class LightSwitch extends Interactable {
   oninteract(passenger) {
     if (passenger == player) {
       document.body.classList.toggle("dark");
+      sounds["sfx"]["click2"].play();
     }
   }
+}
+
+class VendingMachine extends Trinket {
+  constructor(p) {
+    super(p);
+
+    this.tag = "interactable";
+    this.size = new Vector2(30, 40);
+    this.color = new RGBA();
+    this.unpushable = true;
+    this.dialogueRadius = 150;
+  }
+
+  deselect() {
+    this.selected = false;
+    if (player.interacting == this) {
+      player.interacting = null;
+      player.playerDestination = null;
+    }
+  }
+
+  select() {
+    if (player.interacting) player.interacting.deselect();
+    this.selected = true;
+    player.interacting = this;
+    player.playerDestination = this.position.add(this.size.div(2));
+    player.playerDestinationScene = this.scene;
+    if (!this.confiner) {
+      for (let confiner of this.scene.confiners) {
+        if (
+          confiner.radius && circleRect(confiner.position, confiner.radius, this.position, this.size) ||
+          !confiner.radius && rectRect(confiner.position, confiner.size, this.position, this.size)
+        ) {
+          this.confiner = confiner;
+          break;
+        }
+      }
+    }
+    player.playerDestinationConfiner = this.confiner;
+  }
+
+  update(dt) {
+    this.updateInteractionState();
+    this.updateState();
+    this.updateDialogue(dt);
+  }
+
+  draw() {
+    context.fillStyle = BACKGROUND_COLOR;
+    context.strokeStyle = this.color.toString();
+    context.beginPath();
+    context.rect(this.position.x, this.position.y, this.size.x, this.size.y);
+    if (this.hovered || this.selected) {
+      context.fillStyle = context.strokeStyle;
+      context.fill();
+      context.fillStyle = BACKGROUND_COLOR;
+    } else {
+      context.fill();
+      context.stroke();
+      context.fillStyle = this.color.toString();
+    }
+
+    context.font = "italic bold 8px sans-serif";
+    context.textAlign = "left";
+    context.textBaseline = "middle";
+    let lines = ["VEND", "INGM", "ACHI", "NE"];
+    let lineHeight = this.size.y/(lines.length);
+    let y = this.position.y + lineHeight/2;
+    for (let line of lines) {
+      context.fillText(line, this.position.x + 3, y);
+      y += lineHeight;
+    }
+  }
+
+  drawLabels() {
+    this.drawDialogue();
+  }
+
+  updateState() {
+    this.hover = this.mouseCollides();
+
+    if (player && player.interacting == this) {
+      if (mouse.downThisFrame) {
+        if (!this.hover) {
+          this.deselect();
+        }
+  
+        if (this.active && this.hover) {
+          this.oninteract(player);
+        }
+      }
+    } else {
+      if (this.active) {
+        this.active = false;
+        this.onleave(player);
+        this.deselect();
+      }
+    }
+
+    if (player && player.interacting == this && player.scene == this.scene) {
+      let margin = new Vector2(2, 2);
+      let collides = circleRect(player.position, player.radius, this.position.sub(new Vector2(margin.x/2, margin.y/2)), this.size.add(margin));
+      
+      if (collides) {
+        if (!this.active) {
+          this.active = true;
+          this.oninteract(player);
+        }
+      } else if (this.active) {
+        this.active = false;
+        this.onleave(player);
+        this.deselect();
+      }
+    }
+  }
+
+  oninteract(passenger) {
+    let coin;
+    for (let thing of passenger.scene.things) {
+      if (thing.tag == "coin" && thing.linkedPassenger == passenger) {
+        coin = thing;
+        break;
+      }
+    }
+
+    if (coin) {
+      coin.exit();
+
+      sounds["sfx"]["vending machine"].play();
+      this.aimPassenger = passenger;
+
+      setTimeout(function() {
+        let force = this.aimPassenger.position.sub(this.position).div(10);
+        new Soda({
+          scene: this.scene,
+          position: this.position,
+          velocity: force
+        });
+      }.bind(this), 500);
+    } else {
+      this.deselect();
+      this.dialogue = "give me money";
+      this.dialogueTimer = 0;
+      this.dialogueDuration = (this.dialogue.length + 2) * 200;
+    }
+  }
+
+  updateDialogue(dt) {
+    if (this.dialogue) {
+      this.visibleDialogue = this.dialogue.substring(0, this.dialogue.length * (this.dialogueTimer*3/this.dialogueDuration));
+      if (player && this.inSameScreen(player)) {
+        if (
+          this.previousVisibleDialogue && this.previousVisibleDialogue != this.visibleDialogue || 
+          !this.previousVisibleDialogue && this.visibleDialogue.length > 0
+        ) {
+          let howl = sounds["sfx"]["click"+Math.ceil(Math.random() * 3)];
+          let id = howl.play();
+          let center = this.getGlobalPosition().add(this.size.div(2));
+          applySpacialAudio(howl, id, center, player.getGlobalPosition(), this.dialogueRadius);
+        }
+      }
+      this.previousVisibleDialogue = this.visibleDialogue;
+      
+      this.dialogueTimer += dt;
+      if (this.dialogueTimer >= this.dialogueDuration) {
+        this.dialogue = null;
+      }
+    }
+  }
+
+  drawDialogue() {
+    if (this.dialogue) {
+      let string = this.dialogue.substring(0, this.dialogue.length * (this.dialogueTimer*3/this.dialogueDuration));
+
+      context.font = "11px monospace";
+      context.textAlign = "left";
+      context.textBaseline = "top";
+      let measurements = context.measureText(string);
+      let width = measurements.width;
+      let height = measurements.fontBoundingBoxDescent;
+
+      let padding = new Vector2(3, 0);
+      let box = new Vector2(width + padding.x * 2, height + padding.y * 2);
+
+      let center = this.getScreenPosition().add(this.size.div(2));
+      let alpha = 1 - player.getScreenPosition().distanceTo(center)/this.dialogueRadius;
+
+      let color = this.color ? this.color.toString() : LINES_COLOR;
+
+      context.fillStyle = BACKGROUND_COLOR;
+      context.strokeStyle = color;
+      context.beginPath();
+      let x = this.position.x - box.x/2 + this.size.x/2;
+      let y = this.position.y - 5 - box.y;
+      context.rect(x, y, box.x, box.y);
+      if (alpha > .2) context.fill();
+
+      context.globalAlpha = Math.min(Math.max(alpha, 0), 1);
+      context.stroke();
+
+      context.fillStyle = color;
+      context.fillText(string, x + padding.x, y + padding.y);
+
+      context.globalAlpha = 1;
+    }
+  }
+
+  onleave(passenger) { }
 }
