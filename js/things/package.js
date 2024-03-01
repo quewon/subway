@@ -232,11 +232,12 @@ class Recipient extends Passenger {
       force = this.package.linkedPassenger.position.sub(this.position).div(100);
     }
 
-    new Coin({
+    let coin = new Coin({
       scene: this.scene,
       position: this.position,
       velocity: force
     });
+    coin.previousConfiner = this.previousConfiner;
 
     this.package.exit();
     this.package = null;

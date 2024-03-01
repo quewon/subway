@@ -1084,7 +1084,7 @@ class TrainScene extends Scene {
       }
     }
 
-    if (!player || !this.inSameScreen(player.scene)) return;
+    if (!player || !this.isAudibleTo(player.scene)) return;
 
     if (this.previousDoorsOpen && !data.doors_open) {
       sounds.sfx["doors close"].play();
@@ -1093,8 +1093,6 @@ class TrainScene extends Scene {
     }
 
     this.previousDoorsOpen = data.doors_open;
-
-    if (!player || !this.isAudibleTo(player.scene)) return;
 
     let t = data.t;
 

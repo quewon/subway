@@ -724,8 +724,6 @@ class Passenger extends PhysicalThing {
               }
             }
           } else {
-            let nextStation = route[1].station;
-
             if (data.doors_open) {
               let desiredPosition = new Vector2(confiner.size.x/2 * data.direction, 0).add(confinerCenter);
               return desiredPosition.sub(this.position).normalize().mul(.5);

@@ -306,6 +306,17 @@ class Mop extends Trinket {
         this.speed = 10;
     }
 
+    drawLink() {
+        if (this.linkedPassenger && this.linkedPassenger.scene == this.scene) {
+            context.strokeStyle = GROUP_LINES_COLOR;
+            let position = this.position.add(new Vector2(this.size.x/2, this.size.y * 2/3));
+            context.beginPath();
+            context.moveTo(position.x, position.y);
+            context.lineTo(this.linkedPassenger.position.x, this.linkedPassenger.position.y);
+            context.stroke();
+        }
+    }
+
     drawSelf() {
         if (this.ghost) {
             context.strokeStyle = OGYGIA_COLOR;
@@ -314,6 +325,11 @@ class Mop extends Trinket {
         } else {
             context.strokeStyle = LINES_COLOR;
         }
+
+        context.beginPath();
+        context.rect(this.position.x, this.position.y + this.size.y - (this.wet/100 * this.size.y * 1/3), this.size.x, this.size.y * 1/3 * this.wet/100);
+        context.fillStyle = OGYGIA_COLOR;
+        context.fill();
 
         context.beginPath();
         context.moveTo(this.position.x + this.size.x/2, this.position.y);
@@ -328,11 +344,6 @@ class Mop extends Trinket {
             context.fill();
         }
         context.stroke();
-
-        context.beginPath();
-        context.rect(this.position.x, this.position.y + this.size.y - (this.wet/100 * this.size.y * 1/3), this.size.x, this.size.y * 1/3 * this.wet/100);
-        context.fillStyle = OGYGIA_COLOR;
-        context.fill();
     }
 
     update(dt) {
@@ -363,9 +374,26 @@ class Bucket extends Trinket {
     constructor(p) {
         super(p);
         this.size = new Vector2(16, 25);
+        this.water = 1000;
+    }
+
+    drawLink() {
+        if (this.linkedPassenger && this.linkedPassenger.scene == this.scene) {
+            context.strokeStyle = GROUP_LINES_COLOR;
+            let position = this.position.add(new Vector2(this.size.x/2, 0));
+            context.beginPath();
+            context.moveTo(position.x, position.y);
+            context.lineTo(this.linkedPassenger.position.x, this.linkedPassenger.position.y);
+            context.stroke();
+        }
     }
 
     drawSelf() {
+        context.beginPath();
+        context.rect(this.position.x, this.position.y + this.size.y - (this.water/1000 * (this.size.y - this.size.x/2)), this.size.x, (this.size.y - this.size.x/2) * this.water/1000);
+        context.fillStyle = OGYGIA_COLOR;
+        context.fill();
+
         if (this.ghost) {
             context.strokeStyle = OGYGIA_COLOR;
         } else if (this.linkedPassenger) {
@@ -384,19 +412,43 @@ class Bucket extends Trinket {
         context.stroke();
     }
 
-    onlink(passenger) {
-        let mop;
-        for (let thing of passenger.scene.things) {
-            if (thing.tag == "mop" && thing.linkedPassenger == passenger) {
-                mop = thing;
-                break;
+    update(dt) {
+        this.updateLink();
+        this.followLink(dt);
+        this.updateInteractionState();
+
+        if (this.water > 0 && this.linkedPassenger) {
+            let mop;
+            for (let thing of this.linkedPassenger.scene.things) {
+                if (thing.tag == "mop" && thing.linkedPassenger == this.linkedPassenger) {
+                    mop = thing;
+                    break;
+                }
+            }
+
+            if (mop && mop.wet < 100) {
+                mop.wet += dt/10;
+                this.water -= dt/10;
             }
         }
-        if (mop) {
-            mop.wet = 100;
-            passenger.setDialogue("mop is wet");
-            this.deselect();
-        }
+    }
+
+    onlink(passenger) {
+        // if (this.water <= 0) return;
+
+        // let mop;
+        // for (let thing of passenger.scene.things) {
+        //     if (thing.tag == "mop" && thing.linkedPassenger == passenger) {
+        //         mop = thing;
+        //         break;
+        //     }
+        // }
+        // if (mop) {
+        //     mop.wet = 100;
+        //     this.water--;
+        //     passenger.setDialogue("mop is wet");
+        //     this.deselect();
+        // }
     }
 }
 

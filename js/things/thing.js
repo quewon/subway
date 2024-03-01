@@ -25,10 +25,21 @@ class Thing {
 
     if (this.mouseCollides()) {
       document.body.classList.add("pointer");
-      
-      this.hovered = true;
 
-      if (mouse.downThisFrame && !this.selected) {
+      let exclusive = true;
+      if (this.tag == "interactable") {
+        for (let thing of this.scene.things) {
+          if (thing == this) continue;
+          if (thing.hovered) {
+            exclusive = false;
+            break;
+          }
+        }
+      }
+
+      this.hovered = exclusive;
+
+      if (exclusive && mouse.downThisFrame && !this.selected) {
         this.select();
       }
     }
